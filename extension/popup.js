@@ -1,4 +1,4 @@
-const APP_BASE_URL = 'http://localhost:5173/';
+const APP_BASE_URL = 'https://lms-share-production.up.railway.app/';
 
 const pageTitle = document.querySelector('#pageTitle');
 const pageUrl = document.querySelector('#pageUrl');
