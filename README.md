@@ -1,121 +1,102 @@
-# LMS Share — Google Classroom & Microsoft Teams
+# LMS Share — Google Classroom & Microsoft Teams, with Lesson Packs
 
-Drop-in React components that let a teacher share a resource or assessment from your
-platform into **Google Classroom** or **Microsoft Teams for Education**, plus a small
-dev harness for testing against real sandbox tenants.
+Teachers assemble a **sequence of links** into a lesson pack; the pack resolves to a single
+URL that they share into **Google Classroom** or **Microsoft Teams for Education** using the
+built-in share buttons.
 
-This is the **link-sharing tier**: no OAuth app registration, no admin consent, no
-Classroom/Graph API keys. It shares a link (optionally pre-filling an assignment). It
-does **not** pass grades back — that needs the server-side Classroom CourseWork API /
-Graph `educationAssignment` integrations, which are a separate, heavier build.
+- **Builder** (`/`) — title the pack, add/reorder link steps, create it, share the URL.
+- **Viewer** (`/pack/:id`) — a step-through player for students; the single shareable link.
+- **Share** — `ShareToClass` (Classroom + Teams) surfaces automatically once a pack is created.
 
-## Contents
+This version supports **URL items only** (file upload is a later step). Sharing is still the
+link tier — no grade passback yet.
 
-| File | What it is |
-|------|-----------|
-| `src/ShareToClass.jsx` | Combined control + `ShareToGoogleClassroom` / `ShareToTeams` named exports, and the vendor script loaders. |
-| `src/ResourceShareMenu.jsx` | Deferred per-row "Assign ▾" menu + `toShareResource()` mapping, for dynamic per-course lists. |
-| `src/ShareToClass.test.jsx` | Vitest + React Testing Library suite (mocks the vendor globals). |
-| `src/App.jsx` | Dev harness: direct buttons + a mock course resource list. |
+## Architecture
 
-## Quick start (local)
+A single Express service:
 
-Requires Node 18+.
+- serves the built React SPA (`dist/`),
+- exposes a small JSON API (`POST /api/packs`, `GET /api/packs/:id`),
+- persists packs in **SQLite via Node's built-in `node:sqlite`** — a file on a mounted volume.
+
+```
+server/
+  index.js        Express: pack API + SQLite + static SPA serving
+  validate.js     Pure pack validation (http(s) only, caps) — unit-tested
+src/
+  PackBuilder.jsx Build + create + share
+  PackViewer.jsx  Resolve + step through
+  ShareToClass.jsx / ResourceShareMenu.jsx   (unchanged share components)
+  api.js          fetch helpers
+```
+
+> **Why `node:sqlite` and Node 22?** It's SQLite without a native module — no compile step,
+> no prebuilt-binary lottery on deploy. It's still marked experimental in Node 22, hence the
+> `--experimental-sqlite` flag in the scripts and the pinned Node version. On Node 24 it's
+> stable and the flag can be dropped. If you'd rather use a non-experimental library, swap in
+> `better-sqlite3` (it compiles fine on Railway); the `server/index.js` API calls line up closely.
+
+## Local development
+
+Requires Node 22 (`.nvmrc` provided).
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm test           # run the unit tests once
+npm run dev     # Vite on :5173, API on :8787 (Vite proxies /api → the server)
+npm test        # frontend + server validation tests
 ```
 
-> ⚠️ The Google (`platform.js`) and Teams (`launcher.js`) scripts require **https** and
-> will not initialise on `http://localhost`. The buttons render, but the share flow only
-> works from an https origin — so do manual testing on the Railway URL below, not locally.
+> ⚠️ The Google/Teams share scripts require **https** and won't initialise on
+> `http://localhost`. The pack builder/viewer work locally; test the *share* step on the
+> deployed Railway URL.
 
 ## Add to a GitHub repo
 
 ```bash
-cd lms-share
-git init
-git add .
-git commit -m "LMS share: Classroom + Teams components, tests, dev harness"
-
-# with the GitHub CLI:
+git init && git add . && git commit -m "Lesson packs: URL sequences resolving to one shareable link"
 gh repo create lms-share --private --source=. --push
-
-# or manually: create an empty repo on github.com, then:
-git remote add origin git@github.com:<you>/lms-share.git
-git branch -M main
-git push -u origin main
+# or: git remote add origin git@github.com:<you>/lms-share.git && git push -u origin main
 ```
 
 ## Deploy to Railway
 
-Railway gives you an **automatic https URL** (`*.up.railway.app`) — which is exactly what
-the vendor scripts need, so this is the fastest way to get a testable environment.
+Railway builds with Railpack: `npm install` → `npm run build`, then starts with
+`npm run start` (`node --experimental-sqlite server/index.js`), which serves both the SPA and
+the API on `$PORT`. You get an automatic **https** `*.up.railway.app` domain — which the share
+scripts need.
 
-**Option A — from GitHub (recommended):**
-1. railway.com → **New Project** → **Deploy from GitHub repo** → pick `lms-share`.
-2. Railway builds via Railpack: `npm install` → `npm run build`, then serves the built
-   `dist/` with the start command in `railway.json` (`serve -s dist -l $PORT`).
-3. Under the service → **Settings → Networking → Generate Domain** to get your https URL.
-4. Push to `main` → Railway redeploys automatically.
+**⚠️ Add a volume, or packs vanish on every redeploy.** SQLite writes to a file; without a
+persistent volume that file lives in the ephemeral container.
 
-**Option B — from the CLI:**
+1. New Project → **Deploy from GitHub repo** → pick `lms-share`.
+2. Service → **Settings → Volumes → Add Volume**, mount path `/data`.
+3. Service → **Variables** → add `DATA_DIR=/data`.
+4. Service → **Settings → Networking → Generate Domain**.
+5. Push to `main` → auto-redeploys, and the pack database survives because it lives on `/data`.
+
+CLI equivalent:
 ```bash
 npm i -g @railway/cli
-railway login
-railway init            # name the project
-railway up              # build + deploy from the current directory
-railway domain          # generate the public https URL
+railway login && railway init
+railway volume add --mount-path /data     # then set DATA_DIR=/data in the dashboard/variables
+railway up
+railway domain
 ```
 
-### Why the explicit start command?
+## API
 
-Vite is a build tool, not a server. On Railway the common failure is *"No start command
-could be found"*, or an accidental dev server. This repo pins a real static server:
+| Method | Route | Body / result |
+|--------|-------|---------------|
+| `POST` | `/api/packs` | `{ title, items: [{ type:'url', href, title }] }` → `201 { id, url }` |
+| `GET`  | `/api/packs/:id` | `200 { id, title, items, createdAt }` or `404` |
 
-- `package.json` → `"start": "serve -s dist -l ${PORT:-3000}"` (`-s` gives SPA fallback,
-  `$PORT` is provided by Railway).
-- `railway.json` → `startCommand: "npm run start"` (runs via npm so `serve` is on `PATH`).
+Validation (in `server/validate.js`): title required, ≤ 50 items, each item must be a valid
+`http(s)` URL. Non-http schemes (e.g. `javascript:`) are rejected.
 
-Don't swap this for `vite preview` or `vite` — those are development servers and will cost
-you resources on Railway.
+## Notes & guardrails
 
-## Wire it into your platform
-
-Copy `src/ShareToClass.jsx` and `src/ResourceShareMenu.jsx` into your app, then:
-
-```jsx
-import ResourceShareMenu, { toShareResource } from './ResourceShareMenu';
-
-// inside your per-course resource list:
-{resources.map((r) => (
-  <li key={r.id}>
-    <span>{r.title}</span>
-    <ResourceShareMenu resource={toShareResource(r, course)} />
-  </li>
-))}
-```
-
-Adjust `toShareResource()` to your data model (it's the only bit you customise). For short
-lists you can render `<ShareToClass resource={...} />` inline instead of the deferred menu.
-
-## Manual test checklist (needs sandbox tenants)
-
-- **Google**: test Google Workspace for Education domain, Classroom on, a course with a
-  test teacher + student. Share → sign in → course picker → posts as an assignment with
-  your title/body pre-filled → confirm it lands in Classwork.
-- **Teams**: Microsoft 365 Education sandbox, classes provisioned via School Data Sync so
-  the teacher **has associated classes** (or "Create an Assignment" won't appear). Desktop
-  Edge/Chrome only. Share → pick team → post to channel, and → Create an Assignment.
-- **Fallback**: block the vendor script in DevTools → the "Open resource" link should show.
-- **List/SPA**: navigate between courses, open several menus, check the Network tab —
-  `platform.js` and `launcher.js` should each load exactly once.
-
-## Notes
-
-- Google `itemType` can be `assignment` (default), `announcement`, `material`, or `question`.
-- Teams share is desktop Edge/Chrome only; no guest/freemium accounts.
-- When you're ready for grades in the gradebook, this is the layer you upgrade: Classroom
-  CourseWork API + Graph assignment/submission, with the one-time admin consent.
+- The viewer embeds each URL in a **sandboxed iframe**; many sites refuse to be framed
+  (`X-Frame-Options`/CSP), so every step also has a guaranteed **Open in new tab** link.
+- URL-only for now — `type:'file'` is reserved in the model for when uploads are added
+  (that step needs blob storage on the volume + upload handling).
+- Grade passback remains the later upgrade (Classroom CourseWork API / Graph assignments).
