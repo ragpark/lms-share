@@ -7,6 +7,8 @@ built-in share buttons.
 - **Builder** (`/`) — title the pack, add/reorder link steps, create it, share the URL.
 - **Viewer** (`/pack/:id`) — a step-through player for students; the single shareable link.
 - **Share** — `ShareToClass` (Classroom + Teams) surfaces automatically once a pack is created.
+- **Browser extension** (`extension/`) — Chrome/Edge helper that sends the current tab URL into
+  the Builder using `?addUrl=...&addTitle=...`.
 
 This version supports **URL items only** (file upload is a later step). Sharing is still the
 link tier — no grade passback yet.
@@ -28,6 +30,9 @@ src/
   PackViewer.jsx  Resolve + step through
   ShareToClass.jsx / ResourceShareMenu.jsx   (unchanged share components)
   api.js          fetch helpers
+extension/
+  manifest.json   Chrome/Edge Manifest V3 extension
+  popup.*         Reads the active tab and opens the Builder with addUrl/addTitle params
 ```
 
 > **Why `node:sqlite` and Node 22?** It's SQLite without a native module — no compile step,
@@ -49,6 +54,24 @@ npm test        # frontend + server validation tests
 > ⚠️ The Google/Teams share scripts require **https** and won't initialise on
 > `http://localhost`. The pack builder/viewer work locally; test the *share* step on the
 > deployed Railway URL.
+
+## Chrome / Edge extension
+
+The `extension/` directory contains an unpacked Manifest V3 extension that helps teachers add
+the current browser tab to a pack:
+
+1. Open `chrome://extensions` or `edge://extensions`.
+2. Enable **Developer mode**.
+3. Choose **Load unpacked** and select the `extension/` directory.
+4. Start the app with `npm run dev`.
+5. Visit an `http(s)` page, click the LMS Share toolbar button, then choose **Add to Lesson Pack**.
+
+The extension opens the Builder with `addUrl` and `addTitle` query parameters. `PackBuilder`
+prefills the draft step, removes those query parameters from the address bar, and waits for
+the teacher to review and add the step before creating a pack.
+
+Before publishing the extension, update `APP_BASE_URL` in `extension/popup.js` from the local
+dev server to the deployed LMS Share origin.
 
 ## Add to a GitHub repo
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ShareToClass from './ShareToClass';
 import { createPack } from './api';
 
@@ -12,6 +12,24 @@ export default function PackBuilder() {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null); // { id, url }
+  const [importedStep, setImportedStep] = useState(null); // { href, title }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const importedHref = params.get('addUrl')?.trim();
+    if (!importedHref) return;
+
+    const importedTitle = params.get('addTitle')?.trim() || importedHref;
+    setDraftUrl(importedHref);
+    setDraftTitle(importedTitle);
+    setImportedStep({ href: importedHref, title: importedTitle });
+
+    params.delete('addUrl');
+    params.delete('addTitle');
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, []);
 
   const addItem = () => {
     const href = draftUrl.trim();
@@ -19,9 +37,21 @@ export default function PackBuilder() {
       setError('Enter a valid http(s) URL.');
       return;
     }
+    if (items.some((it) => it.href === href)) {
+      setError('That URL is already in this pack.');
+      return;
+    }
     setItems((prev) => [...prev, { type: 'url', href, title: draftTitle.trim() || href }]);
     setDraftUrl('');
     setDraftTitle('');
+    setImportedStep(null);
+    setError(null);
+  };
+
+  const discardImport = () => {
+    setDraftUrl('');
+    setDraftTitle('');
+    setImportedStep(null);
     setError(null);
   };
 
@@ -83,6 +113,20 @@ export default function PackBuilder() {
         Sequence links into a single pack, then share one URL to Google Classroom or Microsoft Teams.
       </p>
 
+      {importedStep && (
+        <section style={styles.importBox} aria-label="Imported browser tab">
+          <strong>Imported from browser extension</strong>
+          <p style={styles.importText}>
+            Review this page, then add it as a step in your lesson pack.
+          </p>
+          <div style={styles.href}>{importedStep.title}</div>
+          <div style={styles.href}>{importedStep.href}</div>
+          <button type="button" style={styles.linkButton} onClick={discardImport}>
+            Discard imported page
+          </button>
+        </section>
+      )}
+
       <label style={styles.label}>
         Pack title
         <input value={title} onChange={(e) => setTitle(e.target.value)} style={styles.input}
@@ -131,6 +175,8 @@ const styles = {
   label: { display: 'block', fontSize: 13, color: '#333', marginTop: 16 },
   input: { display: 'block', width: '100%', padding: 9, marginTop: 4, border: '1px solid #ccc', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' },
   addBox: { display: 'grid', gap: 8, margin: '20px 0', padding: 14, border: '1px dashed #cbd5e1', borderRadius: 8 },
+  importBox: { display: 'grid', gap: 6, margin: '18px 0', padding: 14, border: '1px solid #bfdbfe', borderRadius: 8, background: '#eff6ff' },
+  importText: { color: '#1e3a8a', fontSize: 13, margin: 0 },
   list: { listStyle: 'decimal', paddingLeft: 22, display: 'grid', gap: 8, margin: '16px 0' },
   row: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid #e2e2e2', borderRadius: 8 },
   href: { color: '#64748b', fontSize: 12, wordBreak: 'break-all' },
@@ -138,6 +184,7 @@ const styles = {
   icon: { width: 30, height: 30, border: '1px solid #d1d5db', borderRadius: 6, background: '#f8fafc', cursor: 'pointer' },
   primary: { padding: '10px 16px', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', fontSize: 14, cursor: 'pointer' },
   secondary: { padding: '9px 14px', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', fontSize: 14, cursor: 'pointer' },
+  linkButton: { justifySelf: 'start', padding: 0, border: 'none', background: 'transparent', color: '#1d4ed8', textDecoration: 'underline', fontSize: 13, cursor: 'pointer' },
   error: { color: '#b91c1c', fontSize: 13 },
   packLink: { display: 'inline-block', margin: '6px 0 4px', color: '#2563eb', wordBreak: 'break-all' },
 };
