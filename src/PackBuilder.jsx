@@ -81,110 +81,185 @@ export default function PackBuilder() {
   if (result) {
     const packUrl = `${window.location.origin}${result.url}`;
     return (
-      <main style={styles.main}>
-        <h1 style={styles.h1}>Lesson pack created</h1>
-        <p style={styles.note}>Share this single link — it opens the whole sequence:</p>
-        <a href={packUrl} style={styles.packLink}>{packUrl}</a>
+      <PageShell>
+        <section style={styles.successCard}>
+          <div style={styles.eyebrow}>Ready for class</div>
+          <h1 style={styles.h1}>Lesson pack created</h1>
+          <p style={styles.note}>Share one tidy link that opens the full sequence for your learners.</p>
+          <a href={packUrl} style={styles.packLink}>{packUrl}</a>
 
-        <h2 style={styles.h2}>Share to a class</h2>
-        <ShareToClass
-          resource={{
-            url: packUrl,
-            title,
-            body: `A ${items.length}-step lesson pack: ${title}.`,
-            message: title,
-            itemType: 'assignment',
-          }}
-        />
+          <div style={styles.divider} />
+          <h2 style={styles.h2}>Send to your VLE</h2>
+          <p style={styles.microcopy}>Choose the platform your school uses and post this pack as an assignment.</p>
+          <ShareToClass
+            resource={{
+              url: packUrl,
+              title,
+              body: `A ${items.length}-step lesson pack: ${title}.`,
+              message: title,
+              itemType: 'assignment',
+            }}
+          />
 
-        <p style={{ marginTop: 28 }}>
-          <button style={styles.secondary} onClick={() => { setResult(null); setItems([]); setTitle(''); }}>
-            Build another pack
-          </button>
-        </p>
-      </main>
+          <p style={{ marginTop: 28 }}>
+            <button style={styles.secondary} onClick={() => { setResult(null); setItems([]); setTitle(''); }}>
+              Build another pack
+            </button>
+          </p>
+        </section>
+      </PageShell>
     );
   }
 
   return (
-    <main style={styles.main}>
-      <h1 style={styles.h1}>Build a lesson pack</h1>
-      <p style={styles.note}>
-        Sequence links into a single pack, then share one URL to Google Classroom or Microsoft Teams.
-      </p>
-
-      {importedStep && (
-        <section style={styles.importBox} aria-label="Imported browser tab">
-          <strong>Imported from browser extension</strong>
-          <p style={styles.importText}>
-            Review this page, then add it as a step in your lesson pack.
+    <PageShell>
+      <section style={styles.hero}>
+        <div>
+          <div style={styles.eyebrow}>LMS Share for teachers</div>
+          <h1 style={styles.heroTitle}>Build a polished lesson pack in minutes.</h1>
+          <p style={styles.heroText}>
+            Curate web links into a clear teaching sequence, then share a single URL to Google Classroom or Microsoft Teams.
           </p>
-          <div style={styles.href}>{importedStep.title}</div>
-          <div style={styles.href}>{importedStep.href}</div>
-          <button type="button" style={styles.linkButton} onClick={discardImport}>
-            Discard imported page
-          </button>
-        </section>
-      )}
-
-      <label style={styles.label}>
-        Pack title
-        <input value={title} onChange={(e) => setTitle(e.target.value)} style={styles.input}
-          placeholder="e.g. GCSE Biology: Photosynthesis" />
-      </label>
-
-      <section style={styles.addBox}>
-        <input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} style={styles.input}
-          placeholder="Step label (optional)" />
-        <input value={draftUrl} onChange={(e) => setDraftUrl(e.target.value)} style={styles.input}
-          placeholder="https://…" onKeyDown={(e) => e.key === 'Enter' && addItem()} />
-        <button style={styles.primary} onClick={addItem}>Add step</button>
+        </div>
+        <div style={styles.statCard} aria-label={`${items.length} steps currently in this pack`}>
+          <span style={styles.statNumber}>{items.length}</span>
+          <span style={styles.statLabel}>planned {items.length === 1 ? 'step' : 'steps'}</span>
+        </div>
       </section>
 
-      {error && <p style={styles.error}>{error}</p>}
+      <div style={styles.layout}>
+        <section style={styles.panel} aria-labelledby="pack-details">
+          <h2 id="pack-details" style={styles.panelTitle}>Pack details</h2>
+          <p style={styles.panelHint}>Give the sequence a title pupils and colleagues will recognise.</p>
 
-      <ol style={styles.list}>
-        {items.map((it, i) => (
-          <li key={`${it.href}-${i}`} style={styles.row}>
-            <span style={{ flex: 1 }}>
-              <strong>{it.title}</strong>
-              <br />
-              <span style={styles.href}>{it.href}</span>
-            </span>
-            <span style={styles.controls}>
-              <button style={styles.icon} onClick={() => move(i, -1)} disabled={i === 0}>↑</button>
-              <button style={styles.icon} onClick={() => move(i, 1)} disabled={i === items.length - 1}>↓</button>
-              <button style={styles.icon} onClick={() => removeItem(i)}>✕</button>
-            </span>
-          </li>
-        ))}
-      </ol>
+          {importedStep && (
+            <section style={styles.importBox} aria-label="Imported browser tab">
+              <strong>Imported from browser extension</strong>
+              <p style={styles.importText}>Review this page, then add it as a step in your lesson pack.</p>
+              <div style={styles.href}>{importedStep.title}</div>
+              <div style={styles.href}>{importedStep.href}</div>
+              <button type="button" style={styles.linkButton} onClick={discardImport}>
+                Discard imported page
+              </button>
+            </section>
+          )}
 
-      <button style={styles.primary} onClick={save} disabled={saving || !title.trim() || items.length === 0}>
-        {saving ? 'Creating…' : `Create pack (${items.length} step${items.length === 1 ? '' : 's'})`}
-      </button>
-    </main>
+          <label style={styles.label}>
+            Pack title
+            <input value={title} onChange={(e) => setTitle(e.target.value)} style={styles.input}
+              placeholder="e.g. Year 10 Biology: Photosynthesis" />
+          </label>
+
+          <section style={styles.addBox} aria-labelledby="add-step">
+            <div>
+              <h2 id="add-step" style={styles.panelTitle}>Add a resource</h2>
+              <p style={styles.panelHint}>Paste a link from BBC Bitesize, Oak, a video, quiz or your school platform.</p>
+            </div>
+            <label style={styles.labelCompact}>
+              Step label <span style={styles.optional}>(optional)</span>
+              <input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} style={styles.input}
+                placeholder="Starter video, retrieval quiz, plenary…" />
+            </label>
+            <label style={styles.labelCompact}>
+              Resource URL
+              <input value={draftUrl} onChange={(e) => setDraftUrl(e.target.value)} style={styles.input}
+                placeholder="https://…" onKeyDown={(e) => e.key === 'Enter' && addItem()} />
+            </label>
+            <button style={styles.primary} onClick={addItem}>Add step</button>
+          </section>
+
+          {error && <p role="alert" style={styles.error}>{error}</p>}
+        </section>
+
+        <section style={styles.panel} aria-labelledby="lesson-sequence">
+          <div style={styles.sequenceHeader}>
+            <div>
+              <h2 id="lesson-sequence" style={styles.panelTitle}>Lesson sequence</h2>
+              <p style={styles.panelHint}>Arrange resources in the order learners should open them.</p>
+            </div>
+            <span style={styles.countPill}>{items.length} {items.length === 1 ? 'step' : 'steps'}</span>
+          </div>
+
+          {items.length === 0 ? (
+            <div style={styles.emptyState}>
+              <div style={styles.emptyIcon}>＋</div>
+              <strong>No steps yet</strong>
+              <p style={styles.panelHint}>Add your first resource to start shaping the lesson flow.</p>
+            </div>
+          ) : (
+            <ol style={styles.list}>
+              {items.map((it, i) => (
+                <li key={`${it.href}-${i}`} style={styles.row}>
+                  <span style={styles.stepNumber}>{i + 1}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <strong>{it.title}</strong>
+                    <br />
+                    <span style={styles.href}>{it.href}</span>
+                  </span>
+                  <span style={styles.controls}>
+                    <button style={styles.icon} onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${it.title} up`}>↑</button>
+                    <button style={styles.icon} onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label={`Move ${it.title} down`}>↓</button>
+                    <button style={styles.iconDanger} onClick={() => removeItem(i)} aria-label={`Remove ${it.title}`}>✕</button>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          <button style={styles.primaryWide} onClick={save} disabled={saving || !title.trim() || items.length === 0}>
+            {saving ? 'Creating…' : `Create pack (${items.length} step${items.length === 1 ? '' : 's'})`}
+          </button>
+        </section>
+      </div>
+    </PageShell>
   );
 }
 
+function PageShell({ children }) {
+  return <main style={styles.main}>{children}</main>;
+}
+
 const styles = {
-  main: { maxWidth: 720, margin: '40px auto', padding: '0 20px', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a' },
-  h1: { fontSize: 22, marginBottom: 6 },
-  h2: { fontSize: 16, marginTop: 28 },
-  note: { color: '#555', lineHeight: 1.5 },
-  label: { display: 'block', fontSize: 13, color: '#333', marginTop: 16 },
-  input: { display: 'block', width: '100%', padding: 9, marginTop: 4, border: '1px solid #ccc', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' },
-  addBox: { display: 'grid', gap: 8, margin: '20px 0', padding: 14, border: '1px dashed #cbd5e1', borderRadius: 8 },
-  importBox: { display: 'grid', gap: 6, margin: '18px 0', padding: 14, border: '1px solid #bfdbfe', borderRadius: 8, background: '#eff6ff' },
-  importText: { color: '#1e3a8a', fontSize: 13, margin: 0 },
-  list: { listStyle: 'decimal', paddingLeft: 22, display: 'grid', gap: 8, margin: '16px 0' },
-  row: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid #e2e2e2', borderRadius: 8 },
+  main: { minHeight: '100vh', padding: '48px 20px 64px', fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#13201f', background: 'radial-gradient(circle at top left, #dff7ef 0, transparent 34%), linear-gradient(135deg, #f8fbfa 0%, #eef7f4 100%)', boxSizing: 'border-box' },
+  hero: { maxWidth: 1040, margin: '0 auto 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24, alignItems: 'end' },
+  eyebrow: { color: '#0f766e', fontSize: 13, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 10 },
+  heroTitle: { fontSize: 'clamp(34px, 6vw, 64px)', lineHeight: .95, letterSpacing: '-.06em', margin: 0, maxWidth: 760 },
+  heroText: { color: '#475569', fontSize: 18, lineHeight: 1.6, margin: '18px 0 0', maxWidth: 710 },
+  statCard: { minWidth: 132, padding: 20, borderRadius: 24, background: '#fff', boxShadow: '0 24px 70px rgba(15, 118, 110, .15)', border: '1px solid rgba(15, 118, 110, .12)', textAlign: 'center' },
+  statNumber: { display: 'block', fontSize: 48, fontWeight: 850, color: '#0f766e', lineHeight: 1 },
+  statLabel: { color: '#64748b', fontSize: 13, fontWeight: 700 },
+  layout: { maxWidth: 1040, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, alignItems: 'start' },
+  panel: { background: 'rgba(255,255,255,.86)', border: '1px solid rgba(148,163,184,.28)', borderRadius: 28, padding: 24, boxShadow: '0 24px 80px rgba(15, 23, 42, .08)', backdropFilter: 'blur(16px)' },
+  successCard: { maxWidth: 760, margin: '0 auto', background: 'rgba(255,255,255,.9)', border: '1px solid rgba(148,163,184,.28)', borderRadius: 32, padding: 32, boxShadow: '0 24px 80px rgba(15, 23, 42, .1)' },
+  h1: { fontSize: 42, letterSpacing: '-.04em', margin: '0 0 8px' },
+  h2: { fontSize: 20, margin: '0 0 8px' },
+  panelTitle: { fontSize: 18, letterSpacing: '-.02em', margin: 0 },
+  panelHint: { color: '#64748b', lineHeight: 1.5, margin: '6px 0 0', fontSize: 14 },
+  note: { color: '#475569', lineHeight: 1.6, marginTop: 0 },
+  microcopy: { color: '#64748b', fontSize: 14, marginTop: 0 },
+  label: { display: 'block', fontSize: 13, fontWeight: 750, color: '#334155', marginTop: 20 },
+  labelCompact: { display: 'block', fontSize: 13, fontWeight: 750, color: '#334155' },
+  optional: { color: '#94a3b8', fontWeight: 600 },
+  input: { display: 'block', width: '100%', padding: '13px 14px', marginTop: 7, border: '1px solid #cbd5e1', borderRadius: 14, fontSize: 15, boxSizing: 'border-box', background: '#fff', color: '#0f172a', outlineColor: '#0f766e' },
+  addBox: { display: 'grid', gap: 14, margin: '24px 0 0', padding: 18, border: '1px dashed #99f6e4', borderRadius: 22, background: '#f0fdfa' },
+  importBox: { display: 'grid', gap: 7, margin: '18px 0', padding: 16, border: '1px solid #99f6e4', borderRadius: 18, background: '#f0fdfa' },
+  importText: { color: '#115e59', fontSize: 13, margin: 0 },
+  sequenceHeader: { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'start', marginBottom: 16 },
+  countPill: { flex: '0 0 auto', padding: '7px 10px', borderRadius: 999, background: '#ccfbf1', color: '#115e59', fontSize: 12, fontWeight: 800 },
+  emptyState: { display: 'grid', placeItems: 'center', textAlign: 'center', minHeight: 220, border: '1px dashed #cbd5e1', borderRadius: 22, background: '#f8fafc', color: '#334155' },
+  emptyIcon: { width: 42, height: 42, display: 'grid', placeItems: 'center', borderRadius: 999, background: '#e0f2fe', color: '#0369a1', fontSize: 24, marginBottom: 4 },
+  list: { listStyle: 'none', padding: 0, display: 'grid', gap: 10, margin: '0 0 18px' },
+  row: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px', border: '1px solid #e2e8f0', borderRadius: 18, background: '#fff' },
+  stepNumber: { width: 34, height: 34, display: 'grid', placeItems: 'center', borderRadius: 999, background: '#134e4a', color: '#fff', fontSize: 13, fontWeight: 800, flex: '0 0 auto' },
   href: { color: '#64748b', fontSize: 12, wordBreak: 'break-all' },
-  controls: { display: 'flex', gap: 4 },
-  icon: { width: 30, height: 30, border: '1px solid #d1d5db', borderRadius: 6, background: '#f8fafc', cursor: 'pointer' },
-  primary: { padding: '10px 16px', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', fontSize: 14, cursor: 'pointer' },
-  secondary: { padding: '9px 14px', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', fontSize: 14, cursor: 'pointer' },
-  linkButton: { justifySelf: 'start', padding: 0, border: 'none', background: 'transparent', color: '#1d4ed8', textDecoration: 'underline', fontSize: 13, cursor: 'pointer' },
-  error: { color: '#b91c1c', fontSize: 13 },
-  packLink: { display: 'inline-block', margin: '6px 0 4px', color: '#2563eb', wordBreak: 'break-all' },
+  controls: { display: 'flex', gap: 6, flex: '0 0 auto' },
+  icon: { width: 34, height: 34, border: '1px solid #cbd5e1', borderRadius: 12, background: '#f8fafc', cursor: 'pointer', color: '#334155' },
+  iconDanger: { width: 34, height: 34, border: '1px solid #fecaca', borderRadius: 12, background: '#fff7f7', cursor: 'pointer', color: '#b91c1c' },
+  primary: { padding: '12px 18px', border: 'none', borderRadius: 14, background: '#0f766e', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 12px 24px rgba(15, 118, 110, .18)' },
+  primaryWide: { width: '100%', padding: '14px 18px', border: 'none', borderRadius: 16, background: '#0f766e', color: '#fff', fontSize: 15, fontWeight: 850, cursor: 'pointer', boxShadow: '0 12px 24px rgba(15, 118, 110, .18)' },
+  secondary: { padding: '11px 16px', border: '1px solid #cbd5e1', borderRadius: 14, background: '#fff', fontSize: 14, fontWeight: 750, cursor: 'pointer', color: '#334155' },
+  linkButton: { justifySelf: 'start', padding: 0, border: 'none', background: 'transparent', color: '#0f766e', textDecoration: 'underline', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+  error: { color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 14, padding: '10px 12px', fontSize: 13 },
+  packLink: { display: 'inline-block', margin: '6px 0 4px', color: '#0f766e', wordBreak: 'break-all', fontWeight: 750 },
+  divider: { height: 1, background: '#e2e8f0', margin: '26px 0' },
 };
