@@ -103,6 +103,7 @@ export default function PackBuilder() {
   const [result, setResult] = useState(null); // { id, url }
   const [importedStep, setImportedStep] = useState(null); // { href, title }
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -234,23 +235,36 @@ export default function PackBuilder() {
           <div>
             <div style={styles.eyebrow}>Teaching templates</div>
             <h2 id="template-heading" style={styles.panelTitle}>Start with a familiar classroom structure.</h2>
-            <p style={styles.panelHint}>Choose a template to add editable placeholder steps, or carry on building from scratch.</p>
+            <p style={styles.panelHint}>Templates are hidden by default. Show them when you want to add editable placeholder steps.</p>
           </div>
-          {selectedTemplate && <span style={styles.countPill}>Using {selectedTemplate.title}</span>}
+          <div style={styles.templateActions}>
+            {selectedTemplate && <span style={styles.countPill}>Using {selectedTemplate.title}</span>}
+            <button
+              type="button"
+              style={styles.secondary}
+              onClick={() => setShowTemplates((visible) => !visible)}
+              aria-expanded={showTemplates}
+              aria-controls="template-list"
+            >
+              {showTemplates ? 'Hide templates' : 'Show templates'}
+            </button>
+          </div>
         </div>
-        <div style={styles.templateGrid}>
-          {LESSON_TEMPLATES.map((template) => (
-            <article key={template.id} style={styles.templateCard}>
-              <h3 style={styles.templateTitle}>{template.title}</h3>
-              <p style={styles.panelHint}>{template.summary}</p>
-              <ol style={styles.templateSteps}>
-                {template.steps.slice(0, 5).map(([step]) => <li key={step}>{step}</li>)}
-              </ol>
-              <p style={styles.bestFor}>{template.bestFor}</p>
-              <button type="button" style={styles.secondary} onClick={() => applyTemplate(template)}>Use this template</button>
-            </article>
-          ))}
-        </div>
+        {showTemplates && (
+          <div id="template-list" style={styles.templateGrid}>
+            {LESSON_TEMPLATES.map((template) => (
+              <article key={template.id} style={styles.templateCard}>
+                <h3 style={styles.templateTitle}>{template.title}</h3>
+                <p style={styles.panelHint}>{template.summary}</p>
+                <ol style={styles.templateSteps}>
+                  {template.steps.slice(0, 5).map(([step]) => <li key={step}>{step}</li>)}
+                </ol>
+                <p style={styles.bestFor}>{template.bestFor}</p>
+                <button type="button" style={styles.secondary} onClick={() => applyTemplate(template)}>Use this template</button>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <div style={styles.layout}>
@@ -371,6 +385,7 @@ const styles = {
   statLabel: { color: '#64748b', fontSize: 13, fontWeight: 700 },
   templatePanel: { maxWidth: 1040, margin: '0 auto 20px', background: 'rgba(255,255,255,.78)', border: '1px solid rgba(148,163,184,.28)', borderRadius: 28, padding: 24, boxShadow: '0 24px 80px rgba(15, 23, 42, .07)' },
   templateHeader: { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'start', marginBottom: 16 },
+  templateActions: { display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' },
   templateGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 },
   templateCard: { display: 'grid', gap: 10, alignContent: 'start', padding: 16, border: '1px solid #e2e8f0', borderRadius: 20, background: '#fff' },
   templateTitle: { margin: 0, fontSize: 17, letterSpacing: '-.02em', color: '#13201f' },
