@@ -4,6 +4,95 @@ import { createPack } from './api';
 
 const isHttp = (v) => /^https?:\/\//i.test(v.trim());
 
+const LESSON_TEMPLATES = [
+  {
+    id: 'homework',
+    title: 'Homework task',
+    summary: 'Set a focused independent task with a clear finish point.',
+    bestFor: 'Homework · catch-up · independent study',
+    steps: [
+      ['Instructions', 'Read what you need to complete and how your teacher would like you to approach the task.', '5 mins'],
+      ['Main resource', 'Open the main resource and make notes on the key ideas.', '15 mins'],
+      ['Practice task', 'Complete the task or questions linked here.', '20 mins'],
+      ['Reflection', 'Check your work and note one thing you are confident about and one question you still have.', '5 mins'],
+    ],
+  },
+  {
+    id: 'cover',
+    title: 'Cover lesson',
+    summary: 'Build a self-contained sequence pupils can follow with minimal explanation.',
+    bestFor: 'Cover · supervised study · remote learning',
+    steps: [
+      ['Read this first', 'Start here for the lesson instructions and expectations.', '5 mins'],
+      ['Starter task', 'Complete this short activity to get ready for the lesson.', '10 mins'],
+      ['Main learning resource', 'Open the resource and work through it carefully.', '20 mins'],
+      ['Independent work', 'Complete the main task set by your teacher.', '20 mins'],
+      ['Extension', 'If you finish early, try this challenge activity.', '10 mins'],
+      ['Exit reflection', 'Summarise what you have learnt and any questions you still have.', '5 mins'],
+    ],
+  },
+  {
+    id: 'revision',
+    title: 'Revision pack',
+    summary: 'Guide pupils through recap, practice, self-check and reflection.',
+    bestFor: 'Revision · intervention · exam preparation',
+    steps: [
+      ['Recap key ideas', 'Review the key knowledge for this topic.', '10 mins'],
+      ['Worked example', 'Study the example and note the steps or success criteria.', '10 mins'],
+      ['Practice questions', 'Try the questions independently before checking your answers.', '20 mins'],
+      ['Self-check', 'Use this resource to check your understanding and correct mistakes.', '10 mins'],
+      ['Confidence reflection', 'Decide what you know well and what you need to revisit.', '5 mins'],
+    ],
+  },
+  {
+    id: 'five-part',
+    title: 'Five-part lesson',
+    summary: 'Create a complete lesson flow from starter to plenary.',
+    bestFor: 'Class lessons · blended learning · structured practice',
+    steps: [
+      ['Starter', 'Complete this short activity to activate prior knowledge.', '5 mins'],
+      ['Explain', 'Use this resource for the main explanation or worked example.', '15 mins'],
+      ['Guided practice', 'Try the first task with support from the examples.', '15 mins'],
+      ['Independent practice', 'Complete this task independently to apply your learning.', '20 mins'],
+      ['Plenary', 'Reflect on what you have learnt and check your understanding.', '5 mins'],
+    ],
+  },
+  {
+    id: 'flipped',
+    title: 'Flipped learning',
+    summary: 'Prepare pupils before the next lesson with purposeful pre-learning.',
+    bestFor: 'Pre-reading · video homework · sixth form preparation',
+    steps: [
+      ['Before the lesson', 'Watch or read this before class and make brief notes.', '15 mins'],
+      ['Key vocabulary', 'Review the key words you will need in the lesson.', '10 mins'],
+      ['Checkpoint', 'Answer these questions to check your understanding.', '10 mins'],
+      ['Bring to class', 'Prepare one question or idea to discuss in the next lesson.', '5 mins'],
+    ],
+  },
+  {
+    id: 'exam-practice',
+    title: 'Exam practice',
+    summary: 'Move from review to practice, checking and improving an answer.',
+    bestFor: 'GCSE · A level · assessment preparation',
+    steps: [
+      ['Review the topic', 'Refresh the knowledge or skill before attempting the question.', '10 mins'],
+      ['Study a model', 'Look carefully at the worked example or model answer.', '10 mins'],
+      ['Attempt a question', 'Complete the practice question independently.', '20 mins'],
+      ['Check the mark scheme', 'Compare your answer with the mark scheme or success criteria.', '10 mins'],
+      ['Improve your answer', 'Redraft or improve one part of your response.', '10 mins'],
+    ],
+  },
+];
+
+const templateItems = (template) => template.steps.map(([title, instruction, duration]) => ({
+  type: 'url',
+  href: '',
+  title,
+  instruction,
+  duration,
+  templateId: template.id,
+}));
+
 export default function PackBuilder() {
   const [title, setTitle] = useState('');
   const [items, setItems] = useState([]);
@@ -13,6 +102,7 @@ export default function PackBuilder() {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null); // { id, url }
   const [importedStep, setImportedStep] = useState(null); // { href, title }
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -41,7 +131,7 @@ export default function PackBuilder() {
       setError('That URL is already in this pack.');
       return;
     }
-    setItems((prev) => [...prev, { type: 'url', href, title: draftTitle.trim() || href }]);
+    setItems((prev) => [...prev, { type: 'url', href, title: draftTitle.trim() || href, instruction: '', duration: '' }]);
     setDraftUrl('');
     setDraftTitle('');
     setImportedStep(null);
@@ -55,6 +145,14 @@ export default function PackBuilder() {
     setError(null);
   };
 
+  const applyTemplate = (template) => {
+    setSelectedTemplate(template);
+    setItems(templateItems(template));
+    setResult(null);
+    setError(null);
+  };
+
+  const updateItem = (i, patch) => setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   const removeItem = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
   const move = (i, dir) =>
     setItems((prev) => {
@@ -69,6 +167,10 @@ export default function PackBuilder() {
     setError(null);
     setSaving(true);
     try {
+      if (items.some((it) => !isHttp(it.href || ''))) {
+        setError('Add a valid http(s) URL to every template step before creating the pack.');
+        return;
+      }
       const res = await createPack({ title, items });
       setResult(res);
     } catch (e) {
@@ -102,7 +204,7 @@ export default function PackBuilder() {
           />
 
           <p style={{ marginTop: 28 }}>
-            <button style={styles.secondary} onClick={() => { setResult(null); setItems([]); setTitle(''); }}>
+            <button style={styles.secondary} onClick={() => { setResult(null); setItems([]); setTitle(''); setSelectedTemplate(null); }}>
               Build another pack
             </button>
           </p>
@@ -124,6 +226,30 @@ export default function PackBuilder() {
         <div style={styles.statCard} aria-label={`${items.length} steps currently in this pack`}>
           <span style={styles.statNumber}>{items.length}</span>
           <span style={styles.statLabel}>planned {items.length === 1 ? 'step' : 'steps'}</span>
+        </div>
+      </section>
+
+      <section style={styles.templatePanel} aria-labelledby="template-heading">
+        <div style={styles.templateHeader}>
+          <div>
+            <div style={styles.eyebrow}>Teaching templates</div>
+            <h2 id="template-heading" style={styles.panelTitle}>Start with a familiar classroom structure.</h2>
+            <p style={styles.panelHint}>Choose a template to add editable placeholder steps, or carry on building from scratch.</p>
+          </div>
+          {selectedTemplate && <span style={styles.countPill}>Using {selectedTemplate.title}</span>}
+        </div>
+        <div style={styles.templateGrid}>
+          {LESSON_TEMPLATES.map((template) => (
+            <article key={template.id} style={styles.templateCard}>
+              <h3 style={styles.templateTitle}>{template.title}</h3>
+              <p style={styles.panelHint}>{template.summary}</p>
+              <ol style={styles.templateSteps}>
+                {template.steps.slice(0, 5).map(([step]) => <li key={step}>{step}</li>)}
+              </ol>
+              <p style={styles.bestFor}>{template.bestFor}</p>
+              <button type="button" style={styles.secondary} onClick={() => applyTemplate(template)}>Use this template</button>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -191,22 +317,37 @@ export default function PackBuilder() {
               {items.map((it, i) => (
                 <li key={`${it.href}-${i}`} style={styles.row}>
                   <span style={styles.stepNumber}>{i + 1}</span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <strong>{it.title}</strong>
-                    <br />
-                    <span style={styles.href}>{it.href}</span>
+                  <span style={styles.stepFields}>
+                    <label style={styles.labelCompact}>
+                      Step title
+                      <input value={it.title} onChange={(e) => updateItem(i, { title: e.target.value })} style={styles.input} />
+                    </label>
+                    <label style={styles.labelCompact}>
+                      Pupil instruction <span style={styles.optional}>(optional)</span>
+                      <textarea value={it.instruction || ''} onChange={(e) => updateItem(i, { instruction: e.target.value })} style={styles.textarea} rows={2} />
+                    </label>
+                    <div style={styles.inlineFields}>
+                      <label style={styles.labelCompact}>
+                        Resource URL
+                        <input value={it.href} onChange={(e) => updateItem(i, { href: e.target.value })} style={styles.input} placeholder="https://…" />
+                      </label>
+                      <label style={styles.labelCompact}>
+                        Time <span style={styles.optional}>(optional)</span>
+                        <input value={it.duration || ''} onChange={(e) => updateItem(i, { duration: e.target.value })} style={styles.input} placeholder="10 mins" />
+                      </label>
+                    </div>
                   </span>
                   <span style={styles.controls}>
-                    <button style={styles.icon} onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${it.title} up`}>↑</button>
-                    <button style={styles.icon} onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label={`Move ${it.title} down`}>↓</button>
-                    <button style={styles.iconDanger} onClick={() => removeItem(i)} aria-label={`Remove ${it.title}`}>✕</button>
+                    <button type="button" style={styles.icon} onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${it.title} up`}>↑</button>
+                    <button type="button" style={styles.icon} onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label={`Move ${it.title} down`}>↓</button>
+                    <button type="button" style={styles.iconDanger} onClick={() => removeItem(i)} aria-label={`Remove ${it.title}`}>✕</button>
                   </span>
                 </li>
               ))}
             </ol>
           )}
 
-          <button style={styles.primaryWide} onClick={save} disabled={saving || !title.trim() || items.length === 0}>
+          <button style={styles.primaryWide} onClick={save} disabled={saving || !title.trim() || items.length === 0 || items.some((it) => !isHttp(it.href || ''))}>
             {saving ? 'Creating…' : `Create pack (${items.length} step${items.length === 1 ? '' : 's'})`}
           </button>
         </section>
@@ -228,6 +369,13 @@ const styles = {
   statCard: { minWidth: 132, padding: 20, borderRadius: 24, background: '#fff', boxShadow: '0 24px 70px rgba(15, 118, 110, .15)', border: '1px solid rgba(15, 118, 110, .12)', textAlign: 'center' },
   statNumber: { display: 'block', fontSize: 48, fontWeight: 850, color: '#0f766e', lineHeight: 1 },
   statLabel: { color: '#64748b', fontSize: 13, fontWeight: 700 },
+  templatePanel: { maxWidth: 1040, margin: '0 auto 20px', background: 'rgba(255,255,255,.78)', border: '1px solid rgba(148,163,184,.28)', borderRadius: 28, padding: 24, boxShadow: '0 24px 80px rgba(15, 23, 42, .07)' },
+  templateHeader: { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'start', marginBottom: 16 },
+  templateGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 },
+  templateCard: { display: 'grid', gap: 10, alignContent: 'start', padding: 16, border: '1px solid #e2e8f0', borderRadius: 20, background: '#fff' },
+  templateTitle: { margin: 0, fontSize: 17, letterSpacing: '-.02em', color: '#13201f' },
+  templateSteps: { margin: 0, paddingLeft: 20, color: '#475569', fontSize: 13, lineHeight: 1.5 },
+  bestFor: { margin: 0, color: '#0f766e', fontSize: 12, fontWeight: 800 },
   layout: { maxWidth: 1040, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, alignItems: 'start' },
   panel: { background: 'rgba(255,255,255,.86)', border: '1px solid rgba(148,163,184,.28)', borderRadius: 28, padding: 24, boxShadow: '0 24px 80px rgba(15, 23, 42, .08)', backdropFilter: 'blur(16px)' },
   successCard: { maxWidth: 760, margin: '0 auto', background: 'rgba(255,255,255,.9)', border: '1px solid rgba(148,163,184,.28)', borderRadius: 32, padding: 32, boxShadow: '0 24px 80px rgba(15, 23, 42, .1)' },
@@ -249,9 +397,12 @@ const styles = {
   emptyState: { display: 'grid', placeItems: 'center', textAlign: 'center', minHeight: 220, border: '1px dashed #cbd5e1', borderRadius: 22, background: '#f8fafc', color: '#334155' },
   emptyIcon: { width: 42, height: 42, display: 'grid', placeItems: 'center', borderRadius: 999, background: '#e0f2fe', color: '#0369a1', fontSize: 24, marginBottom: 4 },
   list: { listStyle: 'none', padding: 0, display: 'grid', gap: 10, margin: '0 0 18px' },
-  row: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px', border: '1px solid #e2e8f0', borderRadius: 18, background: '#fff' },
+  row: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px', border: '1px solid #e2e8f0', borderRadius: 18, background: '#fff' },
   stepNumber: { width: 34, height: 34, display: 'grid', placeItems: 'center', borderRadius: 999, background: '#134e4a', color: '#fff', fontSize: 13, fontWeight: 800, flex: '0 0 auto' },
   href: { color: '#64748b', fontSize: 12, wordBreak: 'break-all' },
+  stepFields: { flex: 1, minWidth: 0, display: 'grid', gap: 10 },
+  inlineFields: { display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) minmax(90px, 140px)', gap: 10 },
+  textarea: { display: 'block', width: '100%', padding: '13px 14px', marginTop: 7, border: '1px solid #cbd5e1', borderRadius: 14, fontSize: 15, boxSizing: 'border-box', background: '#fff', color: '#0f172a', outlineColor: '#0f766e', resize: 'vertical', fontFamily: 'inherit' },
   controls: { display: 'flex', gap: 6, flex: '0 0 auto' },
   icon: { width: 34, height: 34, border: '1px solid #cbd5e1', borderRadius: 12, background: '#f8fafc', cursor: 'pointer', color: '#334155' },
   iconDanger: { width: 34, height: 34, border: '1px solid #fecaca', borderRadius: 12, background: '#fff7f7', cursor: 'pointer', color: '#b91c1c' },
