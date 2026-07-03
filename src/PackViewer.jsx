@@ -2,11 +2,15 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchPack } from './api';
 
+const domainOf = (href) => {
+  try { return new URL(href).hostname.replace(/^www\./, ''); } catch { return href; }
+};
+
 export default function PackViewer() {
   const { id } = useParams();
   const [pack, setPack] = useState(null);
   const [error, setError] = useState(null);
-  const [step, setStep] = useState(0);
+  const [viewed, setViewed] = useState(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -16,63 +20,61 @@ export default function PackViewer() {
     return () => { cancelled = true; };
   }, [id]);
 
+  // Restore per-pack progress (this is the deployed app, not a sandbox, so localStorage is fine).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`pack:${id}:viewed`);
+      if (raw) setViewed(new Set(JSON.parse(raw)));
+    } catch { /* ignore */ }
+  }, [id]);
+
+  const markViewed = (i) =>
+    setViewed((prev) => {
+      const next = new Set(prev);
+      next.add(i);
+      try { localStorage.setItem(`pack:${id}:viewed`, JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+
   if (error) return <Centered>{error}</Centered>;
   if (!pack) return <Centered>Loading pack…</Centered>;
-  if (pack.items.length === 0) return <Centered>This pack has no steps.</Centered>;
 
-  const item = pack.items[step];
-  const atStart = step === 0;
-  const atEnd = step === pack.items.length - 1;
+  const total = pack.items.length;
+  const done = pack.items.reduce((n, _, i) => n + (viewed.has(i) ? 1 : 0), 0);
 
   return (
-    <div style={styles.shell}>
+    <main style={styles.main}>
       <header style={styles.header}>
-        <div>
-          <div style={styles.packTitle}>{pack.title}</div>
-          <div style={styles.progress}>Step {step + 1} of {pack.items.length}</div>
-        </div>
-        <div style={styles.nav}>
-          <button style={styles.navBtn} onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={atStart}>← Prev</button>
-          <button style={styles.navBtn} onClick={() => setStep((s) => Math.min(pack.items.length - 1, s + 1))} disabled={atEnd}>Next →</button>
+        <h1 style={styles.title}>{pack.title}</h1>
+        <div style={styles.progress}>{done} of {total} opened</div>
+        <div style={styles.bar}>
+          <div style={{ ...styles.barFill, width: `${total ? (done / total) * 100 : 0}%` }} />
         </div>
       </header>
 
-      <div style={styles.body}>
-        <nav style={styles.sidebar}>
-          <ol style={styles.stepList}>
-            {pack.items.map((it, i) => (
-              <li key={i}>
-                <button
-                  onClick={() => setStep(i)}
-                  style={{ ...styles.stepBtn, ...(i === step ? styles.stepBtnActive : {}) }}
-                >
-                  {it.title}
-                </button>
-              </li>
-            ))}
-          </ol>
-        </nav>
-
-        <main style={styles.stage}>
-          <div style={styles.stageBar}>
-            <span style={styles.stageTitle}>{item.title}</span>
-            <a href={item.href} target="_blank" rel="noopener noreferrer" style={styles.openLink}>
-              Open in new tab ↗
+      <ol style={styles.list}>
+        {pack.items.map((it, i) => (
+          <li key={i} style={{ ...styles.card, ...(viewed.has(i) ? styles.cardDone : {}) }}>
+            <div style={{ ...styles.num, ...(viewed.has(i) ? styles.numDone : {}) }}>
+              {viewed.has(i) ? '✓' : i + 1}
+            </div>
+            <div style={styles.meta}>
+              <div style={styles.itemTitle}>{it.title}</div>
+              <div style={styles.domain}>{domainOf(it.href)}</div>
+            </div>
+            <a
+              href={it.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={styles.open}
+              onClick={() => markViewed(i)}
+            >
+              Open ↗
             </a>
-          </div>
-          {/* Many sites block being framed; the "Open in new tab" link is the guaranteed path. */}
-          <iframe
-            key={item.href}
-            title={item.title}
-            src={item.href}
-            style={styles.frame}
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-            referrerPolicy="strict-origin-when-cross-origin"
-            loading="lazy"
-          />
-        </main>
-      </div>
-    </div>
+          </li>
+        ))}
+      </ol>
+    </main>
   );
 }
 
@@ -81,21 +83,20 @@ function Centered({ children }) {
 }
 
 const styles = {
-  shell: { display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid #e5e7eb', background: '#fff' },
-  packTitle: { fontWeight: 600, fontSize: 15 },
-  progress: { fontSize: 12, color: '#64748b' },
-  nav: { display: 'flex', gap: 8 },
-  navBtn: { padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 13 },
-  body: { display: 'flex', flex: 1, minHeight: 0 },
-  sidebar: { width: 240, borderRight: '1px solid #e5e7eb', overflowY: 'auto', background: '#f8fafc' },
-  stepList: { listStyle: 'decimal', margin: 0, padding: '12px 12px 12px 30px', display: 'grid', gap: 4 },
-  stepBtn: { display: 'block', width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', borderRadius: 6, background: 'transparent', cursor: 'pointer', fontSize: 13 },
-  stepBtnActive: { background: '#e0edff', fontWeight: 600 },
-  stage: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 },
-  stageBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid #eef2f7' },
-  stageTitle: { fontSize: 13, fontWeight: 600 },
-  openLink: { fontSize: 13, color: '#2563eb', textDecoration: 'none' },
-  frame: { flex: 1, width: '100%', border: 'none' },
-  centered: { display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: '#475569', fontFamily: 'system-ui, sans-serif' },
+  main: { maxWidth: 640, margin: '40px auto', padding: '0 20px', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a' },
+  header: { marginBottom: 20 },
+  title: { fontSize: 22, margin: '0 0 6px' },
+  progress: { fontSize: 13, color: '#64748b', marginBottom: 6 },
+  bar: { height: 6, background: '#e5e7eb', borderRadius: 999, overflow: 'hidden' },
+  barFill: { height: '100%', background: '#2563eb', transition: 'width .2s ease' },
+  list: { listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 10 },
+  card: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', border: '1px solid #e2e2e2', borderRadius: 10, background: '#fff' },
+  cardDone: { background: '#f6fbf7', borderColor: '#cfe9d6' },
+  num: { flex: '0 0 auto', width: 28, height: 28, display: 'grid', placeItems: 'center', borderRadius: 999, background: '#eef2f7', color: '#334155', fontSize: 13, fontWeight: 600 },
+  numDone: { background: '#16a34a', color: '#fff' },
+  meta: { flex: 1, minWidth: 0 },
+  itemTitle: { fontWeight: 600, fontSize: 15 },
+  domain: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  open: { flex: '0 0 auto', padding: '8px 14px', border: '1px solid #2563eb', borderRadius: 6, color: '#2563eb', textDecoration: 'none', fontSize: 13, fontWeight: 600 },
+  centered: { display: 'flex', height: '60vh', alignItems: 'center', justifyContent: 'center', color: '#475569', fontFamily: 'system-ui, sans-serif' },
 };
