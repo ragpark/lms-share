@@ -26,6 +26,26 @@ describe('validatePack', () => {
     expect(pack.items[1].title).toBe('https://example.com/quiz'); // falls back to href
   });
 
+  test('preserves optional pupil instructions and timings for template steps', () => {
+    const { errors, pack } = validatePack({
+      title: 'Revision pack',
+      items: [
+        {
+          type: 'url',
+          href: 'https://example.com/revision',
+          title: 'Recap key ideas',
+          instruction: ' Review the key knowledge before attempting the quiz. ',
+          duration: '10 mins',
+        },
+      ],
+    });
+    expect(errors).toHaveLength(0);
+    expect(pack.items[0]).toMatchObject({
+      instruction: 'Review the key knowledge before attempting the quiz.',
+      duration: '10 mins',
+    });
+  });
+
   test('rejects a missing title and empty items', () => {
     const { errors } = validatePack({ title: '', items: [] });
     expect(errors.length).toBeGreaterThanOrEqual(2);

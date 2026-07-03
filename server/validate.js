@@ -2,6 +2,8 @@
 
 export const MAX_ITEMS = 50;
 export const MAX_TITLE = 200;
+export const MAX_INSTRUCTION = 500;
+export const MAX_DURATION = 40;
 
 export function isHttpUrl(value) {
   try {
@@ -14,7 +16,7 @@ export function isHttpUrl(value) {
 
 /**
  * Validate and normalise an incoming pack.
- * @returns {{ errors: string[], pack: { title: string, items: Array<{type:'url',href:string,title:string}> } }}
+ * @returns {{ errors: string[], pack: { title: string, items: Array<{type:'url',href:string,title:string,instruction?:string,duration?:string}> } }}
  */
 export function validatePack(body) {
   const errors = [];
@@ -39,7 +41,9 @@ export function validatePack(body) {
         return;
       }
       const t = typeof it.title === 'string' ? it.title.trim().slice(0, MAX_TITLE) : '';
-      items.push({ type: 'url', href: it.href, title: t || it.href });
+      const instruction = typeof it.instruction === 'string' ? it.instruction.trim().slice(0, MAX_INSTRUCTION) : '';
+      const duration = typeof it.duration === 'string' ? it.duration.trim().slice(0, MAX_DURATION) : '';
+      items.push({ type: 'url', href: it.href, title: t || it.href, ...(instruction && { instruction }), ...(duration && { duration }) });
     });
   }
 

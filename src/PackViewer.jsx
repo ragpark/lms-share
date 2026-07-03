@@ -66,7 +66,8 @@ export default function PackViewer() {
               </div>
               <div style={styles.meta}>
                 <div style={styles.itemTitle}>{it.title}</div>
-                <div style={styles.domain}>{domainOf(it.href)}</div>
+                {it.instruction && <p style={styles.instruction}>{it.instruction}</p>}
+                <div style={styles.domain}>{domainOf(it.href)}{it.duration ? ` · ${it.duration}` : ''}</div>
               </div>
               <a
                 href={it.href}
@@ -108,6 +109,7 @@ const styles = {
   numDone: { background: '#0f766e', color: '#fff' },
   meta: { flex: 1, minWidth: 0 },
   itemTitle: { fontWeight: 800, fontSize: 16, color: '#13201f' },
+  instruction: { color: '#475569', lineHeight: 1.5, margin: '6px 0 0', fontSize: 14 },
   domain: { fontSize: 13, color: '#64748b', marginTop: 4 },
   open: { flex: '0 0 auto', padding: '10px 15px', border: '1px solid #0f766e', borderRadius: 14, color: '#0f766e', background: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 850 },
   centered: { display: 'flex', minHeight: '60vh', alignItems: 'center', justifyContent: 'center', color: '#475569', fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', background: '#f8fbfa' },
