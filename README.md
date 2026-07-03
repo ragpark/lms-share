@@ -95,8 +95,12 @@ Validation (in `server/validate.js`): title required, ≤ 50 items, each item mu
 
 ## Notes & guardrails
 
-- The viewer embeds each URL in a **sandboxed iframe**; many sites refuse to be framed
-  (`X-Frame-Options`/CSP), so every step also has a guaranteed **Open in new tab** link.
+- The viewer is a **launch-list**, not an iframe embed. Most sites block being framed
+  (`X-Frame-Options` / CSP `frame-ancestors`), and that's enforced by the browser on the
+  destination's instruction — it can't be overridden from our side — so each step opens in a
+  new tab. Per-step progress is tracked in `localStorage`. (Optional future upgrade: a
+  server-side header probe at create time to inline-embed only the subset of URLs that permit
+  framing; note the SSRF considerations before adding server-side fetches of arbitrary URLs.)
 - URL-only for now — `type:'file'` is reserved in the model for when uploads are added
   (that step needs blob storage on the volume + upload handling).
 - Grade passback remains the later upgrade (Classroom CourseWork API / Graph assignments).
