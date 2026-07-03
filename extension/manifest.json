@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "LMS Share",
+  "version": "0.1.0",
+  "description": "Add the current page to an LMS Share lesson pack.",
+  "action": {
+    "default_title": "Add to LMS Share",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["activeTab", "tabs"]
+}
