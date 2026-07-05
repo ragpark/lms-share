@@ -4,95 +4,6 @@ import { createPack, reviewDraftPack } from './api';
 
 const isHttp = (v) => /^https?:\/\//i.test(v.trim());
 
-const LESSON_TEMPLATES = [
-  {
-    id: 'homework',
-    title: 'Homework task',
-    summary: 'Set a focused independent task with a clear finish point.',
-    bestFor: 'Homework · catch-up · independent study',
-    steps: [
-      ['Instructions', 'Read what you need to complete and how your teacher would like you to approach the task.', '5 mins'],
-      ['Main resource', 'Open the main resource and make notes on the key ideas.', '15 mins'],
-      ['Practice task', 'Complete the task or questions linked here.', '20 mins'],
-      ['Reflection', 'Check your work and note one thing you are confident about and one question you still have.', '5 mins'],
-    ],
-  },
-  {
-    id: 'cover',
-    title: 'Cover lesson',
-    summary: 'Build a self-contained sequence pupils can follow with minimal explanation.',
-    bestFor: 'Cover · supervised study · remote learning',
-    steps: [
-      ['Read this first', 'Start here for the lesson instructions and expectations.', '5 mins'],
-      ['Starter task', 'Complete this short activity to get ready for the lesson.', '10 mins'],
-      ['Main learning resource', 'Open the resource and work through it carefully.', '20 mins'],
-      ['Independent work', 'Complete the main task set by your teacher.', '20 mins'],
-      ['Extension', 'If you finish early, try this challenge activity.', '10 mins'],
-      ['Exit reflection', 'Summarise what you have learnt and any questions you still have.', '5 mins'],
-    ],
-  },
-  {
-    id: 'revision',
-    title: 'Revision pack',
-    summary: 'Guide pupils through recap, practice, self-check and reflection.',
-    bestFor: 'Revision · intervention · exam preparation',
-    steps: [
-      ['Recap key ideas', 'Review the key knowledge for this topic.', '10 mins'],
-      ['Worked example', 'Study the example and note the steps or success criteria.', '10 mins'],
-      ['Practice questions', 'Try the questions independently before checking your answers.', '20 mins'],
-      ['Self-check', 'Use this resource to check your understanding and correct mistakes.', '10 mins'],
-      ['Confidence reflection', 'Decide what you know well and what you need to revisit.', '5 mins'],
-    ],
-  },
-  {
-    id: 'five-part',
-    title: 'Five-part lesson',
-    summary: 'Create a complete lesson flow from starter to plenary.',
-    bestFor: 'Class lessons · blended learning · structured practice',
-    steps: [
-      ['Starter', 'Complete this short activity to activate prior knowledge.', '5 mins'],
-      ['Explain', 'Use this resource for the main explanation or worked example.', '15 mins'],
-      ['Guided practice', 'Try the first task with support from the examples.', '15 mins'],
-      ['Independent practice', 'Complete this task independently to apply your learning.', '20 mins'],
-      ['Plenary', 'Reflect on what you have learnt and check your understanding.', '5 mins'],
-    ],
-  },
-  {
-    id: 'flipped',
-    title: 'Flipped learning',
-    summary: 'Prepare pupils before the next lesson with purposeful pre-learning.',
-    bestFor: 'Pre-reading · video homework · sixth form preparation',
-    steps: [
-      ['Before the lesson', 'Watch or read this before class and make brief notes.', '15 mins'],
-      ['Key vocabulary', 'Review the key words you will need in the lesson.', '10 mins'],
-      ['Checkpoint', 'Answer these questions to check your understanding.', '10 mins'],
-      ['Bring to class', 'Prepare one question or idea to discuss in the next lesson.', '5 mins'],
-    ],
-  },
-  {
-    id: 'exam-practice',
-    title: 'Exam practice',
-    summary: 'Move from review to practice, checking and improving an answer.',
-    bestFor: 'GCSE · A level · assessment preparation',
-    steps: [
-      ['Review the topic', 'Refresh the knowledge or skill before attempting the question.', '10 mins'],
-      ['Study a model', 'Look carefully at the worked example or model answer.', '10 mins'],
-      ['Attempt a question', 'Complete the practice question independently.', '20 mins'],
-      ['Check the mark scheme', 'Compare your answer with the mark scheme or success criteria.', '10 mins'],
-      ['Improve your answer', 'Redraft or improve one part of your response.', '10 mins'],
-    ],
-  },
-];
-
-const templateItems = (template) => template.steps.map(([title, instruction, duration]) => ({
-  type: 'url',
-  href: '',
-  title,
-  instruction,
-  duration,
-  templateId: template.id,
-}));
-
 export default function PackBuilder() {
   const [title, setTitle] = useState('');
   const [items, setItems] = useState([]);
@@ -102,8 +13,6 @@ export default function PackBuilder() {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null); // { id, url }
   const [importedStep, setImportedStep] = useState(null); // { href, title }
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [showTemplates, setShowTemplates] = useState(false);
   const [review, setReview] = useState(null);
   const [reviewError, setReviewError] = useState(null);
   const [reviewing, setReviewing] = useState(false);
@@ -154,13 +63,6 @@ export default function PackBuilder() {
     setError(null);
   };
 
-  const applyTemplate = (template) => {
-    setSelectedTemplate(template);
-    setItems(templateItems(template));
-    setResult(null);
-    setError(null);
-  };
-
   const updateItem = (i, patch) => setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   const removeItem = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
   const move = (i, dir) =>
@@ -192,7 +94,7 @@ export default function PackBuilder() {
     setSaving(true);
     try {
       if (items.some((it) => !isHttp(it.href || ''))) {
-        setError('Add a valid http(s) URL to every template step before creating the pack.');
+        setError('Add a valid http(s) URL to every step before creating the pack.');
         return;
       }
       const res = await createPack({ title, items });
@@ -228,7 +130,7 @@ export default function PackBuilder() {
           />
 
           <p style={{ marginTop: 28 }}>
-            <button style={styles.secondary} onClick={() => { setResult(null); setItems([]); setTitle(''); setSelectedTemplate(null); }}>
+            <button style={styles.secondary} onClick={() => { setResult(null); setItems([]); setTitle(''); }}>
               Build another pack
             </button>
           </p>
@@ -251,43 +153,6 @@ export default function PackBuilder() {
           <span style={styles.statNumber}>{items.length}</span>
           <span style={styles.statLabel}>planned {items.length === 1 ? 'step' : 'steps'}</span>
         </div>
-      </section>
-
-      <section style={styles.templatePanel} aria-labelledby="template-heading">
-        <div style={styles.templateHeader}>
-          <div>
-            <div style={styles.eyebrow}>Teaching templates</div>
-            <h2 id="template-heading" style={styles.panelTitle}>Start with a familiar classroom structure.</h2>
-            <p style={styles.panelHint}>Templates are hidden by default. Show them when you want to add editable placeholder steps.</p>
-          </div>
-          <div style={styles.templateActions}>
-            {selectedTemplate && <span style={styles.countPill}>Using {selectedTemplate.title}</span>}
-            <button
-              type="button"
-              style={styles.secondary}
-              onClick={() => setShowTemplates((visible) => !visible)}
-              aria-expanded={showTemplates}
-              aria-controls="template-list"
-            >
-              {showTemplates ? 'Hide templates' : 'Show templates'}
-            </button>
-          </div>
-        </div>
-        {showTemplates && (
-          <div id="template-list" style={styles.templateGrid}>
-            {LESSON_TEMPLATES.map((template) => (
-              <article key={template.id} style={styles.templateCard}>
-                <h3 style={styles.templateTitle}>{template.title}</h3>
-                <p style={styles.panelHint}>{template.summary}</p>
-                <ol style={styles.templateSteps}>
-                  {template.steps.slice(0, 5).map(([step]) => <li key={step}>{step}</li>)}
-                </ol>
-                <p style={styles.bestFor}>{template.bestFor}</p>
-                <button type="button" style={styles.secondary} onClick={() => applyTemplate(template)}>Use this template</button>
-              </article>
-            ))}
-          </div>
-        )}
       </section>
 
       <div style={styles.layout}>
@@ -450,14 +315,6 @@ const styles = {
   statCard: { minWidth: 132, padding: 20, borderRadius: 24, background: '#fff', boxShadow: '0 24px 70px rgba(15, 118, 110, .15)', border: '1px solid rgba(15, 118, 110, .12)', textAlign: 'center' },
   statNumber: { display: 'block', fontSize: 48, fontWeight: 850, color: '#0f766e', lineHeight: 1 },
   statLabel: { color: '#64748b', fontSize: 13, fontWeight: 700 },
-  templatePanel: { maxWidth: 1040, margin: '0 auto 20px', background: 'rgba(255,255,255,.78)', border: '1px solid rgba(148,163,184,.28)', borderRadius: 28, padding: 24, boxShadow: '0 24px 80px rgba(15, 23, 42, .07)' },
-  templateHeader: { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'start', marginBottom: 16 },
-  templateActions: { display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' },
-  templateGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 },
-  templateCard: { display: 'grid', gap: 10, alignContent: 'start', padding: 16, border: '1px solid #e2e8f0', borderRadius: 20, background: '#fff' },
-  templateTitle: { margin: 0, fontSize: 17, letterSpacing: '-.02em', color: '#13201f' },
-  templateSteps: { margin: 0, paddingLeft: 20, color: '#475569', fontSize: 13, lineHeight: 1.5 },
-  bestFor: { margin: 0, color: '#0f766e', fontSize: 12, fontWeight: 800 },
   layout: { maxWidth: 1040, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, alignItems: 'start' },
   panel: { background: 'rgba(255,255,255,.86)', border: '1px solid rgba(148,163,184,.28)', borderRadius: 28, padding: 24, boxShadow: '0 24px 80px rgba(15, 23, 42, .08)', backdropFilter: 'blur(16px)' },
   successCard: { maxWidth: 760, margin: '0 auto', background: 'rgba(255,255,255,.9)', border: '1px solid rgba(148,163,184,.28)', borderRadius: 32, padding: 32, boxShadow: '0 24px 80px rgba(15, 23, 42, .1)' },
