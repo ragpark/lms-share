@@ -11,6 +11,11 @@ Spec Driven Development (SDD) keeps product decisions, design intent, architectu
 > [Designing a Feature as a UX Designer](designing-a-feature-as-a-ux-designer.md) for
 > step-by-step instructions on turning an approved product brief into the experience and design
 > section of the same spec, without writing any code.
+>
+> **Architect or tech lead picking up a spec from product and design?** Continue with
+> [Architecting a Feature as an Architect / Tech Lead](architecting-a-feature-as-an-architect.md)
+> for step-by-step instructions on turning the product brief and design section into the
+> architecture section of the same spec, without writing any code.
 
 ## How to proceed
 
