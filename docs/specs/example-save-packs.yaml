@@ -12,9 +12,26 @@ links:
   markdown_spec: docs/specs/example-save-packs.md
   playbook: docs/spec-driven-development.md
   issue: TBD
+  jira: TBD
+  pull_request: TBD
   design_spec: TBD
   prototype: TBD
   dashboard: TBD
+automation:
+  jira_key: TBD
+  github:
+    branch: spec/SDD-2026-001-save-packs
+    required_checks:
+      - validate-spec
+  railway:
+    environments:
+      - name: staging
+        maps_to_stage: Internal validation
+      - name: production
+        maps_to_stage: General availability
+    volumes:
+      - /data (SQLite persistent volume)
+    rollback_command: railway rollback --environment production
 product:
   problem: Teachers can build and share lesson packs, but they need a simple way to save packs, find them later, and reuse or edit them without rebuilding from scratch.
   goals:

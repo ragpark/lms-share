@@ -21,6 +21,11 @@ Spec Driven Development (SDD) keeps product decisions, design intent, architectu
 > [Implementing a Feature as an Engineer](implementing-a-feature-as-an-engineer.md) for
 > step-by-step instructions on turning the approved spec into acceptance criteria, a test plan, an
 > implementation plan, and working, tested code.
+>
+> **Engineering lead wiring up the automation around a spec?** Continue with
+> [Wiring Jira, Claude, GitHub, and Railway to Consume a Spec](wiring-agentic-ai-tooling.md) for
+> concrete guidance on making Jira, Claude, GitHub, and Railway read and act on the same spec
+> instead of drifting out of sync with it.
 
 ## How to proceed
 
@@ -31,6 +36,7 @@ Spec Driven Development (SDD) keeps product decisions, design intent, architectu
 5. **Turn acceptance criteria into tests.** Engineers map each user-facing requirement to unit, integration, end-to-end, accessibility, and manual checks before implementation begins.
 6. **Track decisions and changes in the spec.** Use a decision log so later contributors understand why trade-offs were made.
 7. **Make the spec a release gate.** Pull requests should cite the spec, update implementation status, and explain any variance from the approved acceptance criteria.
+8. **Wire the machine-readable fields into your tooling.** If you use Jira, Claude, GitHub, and Railway together, see [Wiring Jira, Claude, GitHub, and Railway to Consume a Spec](wiring-agentic-ai-tooling.md) for how each tool should read `status`, `acceptance_criteria`, `tests`, and `release_checklist` instead of tracking a parallel copy of them.
 
 ## Recommended lifecycle
 
@@ -211,9 +217,26 @@ owners:
 links:
   markdown_spec: docs/specs/YYYY-MM-DD-short-name.md
   issue: <url>
+  jira: <key, e.g. LMS-123>
+  pull_request: <url, filled in once opened>
   design_spec: <url>
   prototype: <url>
   dashboard: <url>
+automation:
+  jira_key: <e.g. LMS-123>
+  github:
+    branch: spec/SDD-YYYY-NNN-short-name
+    required_checks:
+      - validate-spec
+  railway:
+    environments:
+      - name: staging
+        maps_to_stage: <rollout stage name>
+      - name: production
+        maps_to_stage: <rollout stage name>
+    volumes:
+      - <mount path referenced in guardrails>
+    rollback_command: railway rollback --environment production
 product:
   problem: <one paragraph>
   goals:
@@ -400,7 +423,7 @@ Railway will not read product intent directly, so the spec should call out deplo
 - Rollback instructions must explain whether old code can read data written by new code.
 - Health checks, logs, or metrics should make save failures visible after deployment.
 
-See `docs/specs/example-save-packs.md` for a filled-in human-readable spec and `docs/specs/example-save-packs.yaml` for a matching machine-readable draft that a future GitHub workflow could validate.
+See `docs/specs/example-save-packs.md` for a filled-in human-readable spec and `docs/specs/example-save-packs.yaml` for a matching machine-readable draft that a future GitHub workflow could validate. See [Wiring Jira, Claude, GitHub, and Railway to Consume a Spec](wiring-agentic-ai-tooling.md) for the concrete automation that turns this section from prose into enforced behavior.
 
 ## Pull request guardrail
 
