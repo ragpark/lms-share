@@ -4,7 +4,7 @@ Teachers assemble a **sequence of links** into a lesson pack; the pack resolves 
 URL that they share into **Google Classroom** or **Microsoft Teams for Education** using the
 built-in share buttons.
 
-- **Builder** (`/`) — title the pack, add/reorder link steps, create it, share the URL.
+- **Builder** (`/`) — title the pack, add/reorder link steps, optionally request an advisory Phase 1 AI review, create it, share the URL.
 - **Viewer** (`/pack/:id`) — a step-through player for students; the single shareable link.
 - **Share** — `ShareToClass` (Classroom + Teams) surfaces automatically once a pack is created.
 - **Browser extension** (`extension/`) — Chrome/Edge helper that sends the current tab URL into
@@ -18,12 +18,13 @@ link tier — no grade passback yet.
 A single Express service:
 
 - serves the built React SPA (`dist/`),
-- exposes a small JSON API (`POST /api/packs`, `GET /api/packs/:id`),
+- exposes a small JSON API (`POST /api/packs`, `POST /api/packs/review-draft`, `GET /api/packs/:id`),
 - persists packs in **SQLite via Node's built-in `node:sqlite`** — a file on a mounted volume.
 
 ```
 server/
-  index.js        Express: pack API + SQLite + static SPA serving
+  index.js        Express: pack API + AI draft review route + SQLite + static SPA serving
+  aiReview.js     Server-side OpenAI draft lesson-pack review helper
   validate.js     Pure pack validation (http(s) only, caps) — unit-tested
 src/
   PackBuilder.jsx Build + create + share
@@ -54,6 +55,31 @@ npm test        # frontend + server validation tests
 > ⚠️ The Google/Teams share scripts require **https** and won't initialise on
 > `http://localhost`. The pack builder/viewer work locally; test the *share* step on the
 > deployed Railway URL.
+
+## Phase 1 AI lesson-pack review
+
+The Builder includes an optional teacher-facing **Review lesson with AI** button. It reviews a
+draft before the pack is created and returns structured advice on likely lesson structure, best
+suited learner type, pedagogical approach, metacognitive support, strengths, risks/gaps,
+suggested improvements, per-step notes, and limitations.
+
+Phase 1 is deliberately metadata-only: the server sends the pack title, ordered step titles,
+pupil instructions, durations, resource URLs, and extracted URL domains to the AI provider. It
+**does not fetch, scrape, crawl, or inspect actual web page contents**, and the review is worded
+as inference from teacher-entered metadata and URL/domain signals. The review is advisory; the
+teacher remains responsible for checking resources and deciding whether to change the pack.
+Review results are not persisted to SQLite and normal pack creation is not blocked if review
+fails.
+
+Configuration:
+
+- `OPENAI_API_KEY` enables the AI review endpoint. If it is missing, `/api/packs/review-draft`
+  returns `503 { error: "AI review is not configured." }`, and teachers can still create packs.
+- `OPENAI_MODEL` optionally chooses the model; the server defaults to `gpt-4o-mini`.
+
+Privacy/safety: URLs and teacher-entered metadata may be sent to the configured AI provider when
+a teacher clicks the review button. Do not put sensitive pupil data in pack titles, step titles,
+or pupil instructions.
 
 ## Chrome / Edge extension
 
@@ -110,7 +136,8 @@ railway domain
 
 | Method | Route | Body / result |
 |--------|-------|---------------|
-| `POST` | `/api/packs` | `{ title, items: [{ type:'url', href, title }] }` → `201 { id, url }` |
+| `POST` | `/api/packs` | `{ title, items: [{ type:'url', href, title, instruction, duration }] }` → `201 { id, url }` |
+| `POST` | `/api/packs/review-draft` | Same draft shape as pack creation → structured advisory AI review; does not persist |
 | `GET`  | `/api/packs/:id` | `200 { id, title, items, createdAt }` or `404` |
 
 Validation (in `server/validate.js`): title required, ≤ 50 items, each item must be a valid
