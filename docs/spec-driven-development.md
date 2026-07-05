@@ -310,6 +310,78 @@ release_checklist:
   docs_updated: false
 ```
 
+## Real-world example: teacher saved packs
+
+Imagine you are the product owner for LMS Share and you want teachers to save packs they have built so they can return later, edit, reuse, and share them again. The spec should translate that plain-language intent into a shared agreement that people and automation can both understand.
+
+### What the product owner writes in plain English
+
+Start by describing the teacher outcome without prescribing the database or code solution:
+
+> Teachers invest time building lesson packs. They need a simple way to save a pack, find it again later, and reuse or edit it without rebuilding from scratch.
+
+Then add the boundaries that prevent accidental scope creep:
+
+- This first version is for saving and reopening a teacher's own packs.
+- It does not need class rosters, grade passback, collaborative editing, or public search.
+- A teacher should understand whether a pack is saved, unsaved, saving, or failed to save.
+- A teacher should not lose work if a save fails.
+
+### What the designer adds
+
+The designer turns that intent into visible product behavior:
+
+- Where the **Save pack** action appears in the Builder.
+- What teachers see after a successful save.
+- How the app shows saved, unsaved, saving, and error states.
+- How a teacher finds previously saved packs, for example a **My packs** page.
+- Keyboard, screen reader, focus, and error-message expectations.
+
+### What architects and engineers add
+
+Architects and engineers translate the experience into safe implementation boundaries:
+
+- Whether teachers need accounts before saved packs can be private.
+- Which API routes are needed, such as creating, updating, listing, and retrieving saved packs.
+- Which database fields are needed, such as owner, title, items, timestamps, and share URL.
+- What happens to existing anonymous shared packs.
+- How data is backed up and retained on Railway's persistent volume.
+- Which logs or metrics show saves succeeding or failing.
+- How the feature can be rolled back without losing teacher-created content.
+
+### What Coding AI needs from the spec
+
+A Coding AI can follow the spec better when the work is expressed as precise, testable instructions rather than broad wishes. Include:
+
+- A stable spec ID, for example `SDD-2026-001`, that the Coding AI must reference in commits and pull requests.
+- Acceptance criteria written as Given/When/Then statements.
+- Exact files or areas likely to change, if known, such as `src/PackBuilder.jsx`, `server/index.js`, and validation tests.
+- Required tests for each acceptance criterion.
+- Guardrails such as "do not add grade passback" or "do not send saved-pack contents to AI review unless the teacher explicitly requests review."
+- Migration and rollback notes so the AI does not make a change that only works on a clean local database.
+
+### What GitHub CI/CD can understand
+
+GitHub can enforce parts of the spec if the spec includes machine-readable fields:
+
+- `spec_id` lets pull requests prove they are tied to an approved change.
+- `status: ready-for-build` tells reviewers and CI that implementation can begin.
+- `acceptance_criteria` and `tests` let a workflow check that planned tests exist.
+- `release_checklist.tests_passing: true` can become a merge requirement.
+- PR templates can require links to the Markdown spec, YAML spec, screenshots for UI changes, and notes on any spec deviation.
+
+### What Railway deployment can respect
+
+Railway will not read product intent directly, so the spec should call out deployment-sensitive requirements in concrete terms:
+
+- Persistent data must live on the configured Railway volume, not ephemeral container storage.
+- Any new environment variables must be named and documented.
+- Database migrations must run safely against existing pack data.
+- Rollback instructions must explain whether old code can read data written by new code.
+- Health checks, logs, or metrics should make save failures visible after deployment.
+
+See `docs/specs/example-save-packs.md` for a filled-in human-readable spec and `docs/specs/example-save-packs.yaml` for a matching machine-readable draft that a future GitHub workflow could validate.
+
 ## Pull request guardrail
 
 Every implementation pull request should include:

@@ -1,0 +1,221 @@
+spec_id: SDD-2026-001
+name: Save teacher lesson packs
+status: draft
+created: 2026-07-05
+target_release: TBD
+owners:
+  product: Product owner
+  design: Product designer
+  architecture: Technical lead
+  engineering: LMS Share engineering
+links:
+  markdown_spec: docs/specs/example-save-packs.md
+  playbook: docs/spec-driven-development.md
+  issue: TBD
+  design_spec: TBD
+  prototype: TBD
+  dashboard: TBD
+product:
+  problem: Teachers can build and share lesson packs, but they need a simple way to save packs, find them later, and reuse or edit them without rebuilding from scratch.
+  goals:
+    - Let a teacher save a pack they have built.
+    - Let a teacher reopen saved packs from a My packs experience.
+    - Preserve the current share-link behavior for students and classroom sharing.
+  non_goals:
+    - Grade passback
+    - Collaborative editing
+    - Public pack marketplace or search
+    - Class roster management
+    - File upload changes
+  users:
+    - persona: Teacher
+      job_to_be_done: Save a lesson pack for later reuse
+      pain: Must keep the generated URL manually or rebuild the pack
+      desired_outcome: Can save, find, reopen, edit, and share the pack again
+  success_metrics:
+    - name: saved_packs_created
+      baseline: TBD
+      target: Increase after launch
+      source: Server logs or analytics event
+    - name: save_failure_rate
+      baseline: TBD
+      target: Below agreed threshold
+      source: Server logs or error tracking
+design:
+  journeys:
+    - name: save_new_pack
+      steps:
+        - Teacher builds a valid pack.
+        - Teacher selects Save pack.
+        - App confirms the pack is saved and keeps the share action available.
+    - name: reopen_saved_pack
+      steps:
+        - Teacher opens My packs.
+        - Teacher selects a saved pack.
+        - Builder opens the pack for review, editing, and sharing.
+  ui_states:
+    empty: My packs explains that saved packs will appear after the teacher saves one.
+    loading: Save and list actions show progress without duplicating submissions.
+    success: Builder shows that the current pack is saved.
+    error: Builder explains that saving failed and keeps unsaved content visible.
+    permission_denied: If accounts are required, prompt the teacher to sign in before viewing private saved packs.
+  accessibility:
+    keyboard: Save controls and My packs navigation must be keyboard reachable.
+    screen_reader: Save status updates must be announced.
+    contrast: Status and error indicators must meet existing contrast expectations.
+    reduced_motion: Saving feedback must not rely on motion alone.
+  content:
+    localization: Keep labels short and teacher-friendly.
+    error_copy: Explain that the draft has not been lost and what to try next.
+architecture:
+  touched_systems:
+    - src/PackBuilder.jsx
+    - src/PackViewer.jsx
+    - server/index.js
+    - server/validate.js
+    - SQLite database on Railway persistent volume
+  api_changes:
+    - method: POST
+      path: /api/packs or /api/saved-packs
+      request_schema: Pack title and URL items
+      response_schema: Saved pack ID and share URL
+      error_codes: [400, 500]
+    - method: PUT
+      path: /api/packs/:id
+      request_schema: Updated pack title and URL items
+      response_schema: Updated pack metadata
+      error_codes: [400, 403, 404, 500]
+    - method: GET
+      path: /api/packs or /api/my-packs
+      request_schema: Teacher identity or session context
+      response_schema: List of saved packs
+      error_codes: [401, 500]
+  data_changes:
+    - entity: packs
+      change: Add owner/session metadata if private saved packs require identity.
+      migration: Preserve existing anonymous packs and generated share links.
+      retention: Retain until teacher deletes or retention policy is defined.
+  security_privacy:
+    data_classification: Teacher-created lesson metadata and URLs; avoid student personal data.
+    authz: A teacher must not be able to view or edit another teacher's private saved packs.
+    input_validation: Continue to allow only valid http(s) URLs using pack validation rules.
+    abuse_cases:
+      - Teacher attempts to edit another teacher's saved pack.
+      - Malicious or non-http URL is submitted for saving.
+  observability:
+    logs:
+      - saved_pack_create_success
+      - saved_pack_create_failure
+      - saved_pack_update_failure
+    metrics:
+      - saved_packs_created
+      - save_failure_rate
+    alerts:
+      - Alert or deployment check if save failures spike after release.
+  rollout:
+    feature_flag: saved_packs_enabled if UI and API are released incrementally
+    stages:
+      - Internal validation
+      - Limited teacher trial
+      - General availability
+    rollback_trigger: Save failure spike, data integrity issue, or broken existing share URLs
+acceptance_criteria:
+  - id: AC1
+    given: A teacher has built a valid pack
+    when: They select Save pack
+    then: The pack is stored and the teacher sees a saved confirmation
+  - id: AC2
+    given: A teacher has saved packs
+    when: They open My packs
+    then: They see a list of their saved packs with enough information to choose the correct one
+  - id: AC3
+    given: A teacher opens a saved pack
+    when: They change the title or items and save again
+    then: The saved pack reflects the latest changes
+  - id: AC4
+    given: Saving fails
+    when: The teacher remains in the Builder
+    then: Their unsaved draft remains visible and an actionable error message is shown
+  - id: AC5
+    given: A student opens an existing share URL
+    when: The saved-pack feature is enabled
+    then: The student viewing experience still works as before
+tests:
+  - ac: AC1
+    type: integration
+    path: server saved-pack create tests
+    owner: Engineering
+    status: planned
+  - ac: AC2
+    type: component_or_e2e
+    path: My packs UI tests
+    owner: Engineering
+    status: planned
+  - ac: AC3
+    type: integration
+    path: saved-pack update API tests
+    owner: Engineering
+    status: planned
+  - ac: AC4
+    type: component
+    path: save failure UI test
+    owner: Engineering
+    status: planned
+  - ac: AC5
+    type: regression
+    path: Pack viewer tests
+    owner: Engineering
+    status: planned
+guardrails:
+  performance_budget: My packs should load quickly for a normal teacher account; exact budget TBD during architecture review.
+  browser_support: Match existing LMS Share browser support.
+  dependency_policy: Prefer existing stack unless architecture review approves a new dependency.
+  backward_compatibility: Existing generated share URLs must continue to work.
+  railway_storage: Production saved-pack data must use the configured Railway persistent volume, not ephemeral filesystem storage.
+  documentation_required: true
+implementation:
+  tasks:
+    - id: TASK1
+      description: Confirm teacher identity and ownership model.
+      owner: Product and architecture
+      status: todo
+    - id: TASK2
+      description: Finalize Builder and My packs UI states.
+      owner: Design
+      status: todo
+    - id: TASK3
+      description: Define database migration and API routes.
+      owner: Architecture and engineering
+      status: todo
+    - id: TASK4
+      description: Implement save, list, reopen, and update flows with tests.
+      owner: Engineering
+      status: todo
+open_questions:
+  - question: Do teachers sign in, or is the first version based on local browser/session ownership?
+    owner: Product owner
+    due: TBD
+  - question: Should editing a saved pack update the existing share URL or create a new version?
+    owner: Product owner
+    due: TBD
+  - question: Is delete/archive required for the first release?
+    owner: Product owner
+    due: TBD
+decisions:
+  - date: 2026-07-05
+    decision: Treat saved packs as a distinct product workflow that needs identity and persistence decisions before build.
+    options_considered:
+      - Anonymous browser-only saves
+      - Private account-based saves
+      - Shared-link-only reuse
+    owner: Product owner
+release_checklist:
+  product_acceptance: false
+  design_acceptance: false
+  architecture_acceptance: false
+  tests_passing: false
+  accessibility_checked: false
+  observability_ready: false
+  rollback_ready: false
+  docs_updated: false
+  railway_persistent_storage_confirmed: false
