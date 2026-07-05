@@ -147,6 +147,15 @@ Validation (in `server/validate.js`): title required, ≤ 50 items, each item mu
 
 Future product, design, architecture, engineering, testing, and release guardrails can be coordinated through the Spec Driven Development playbook in `docs/spec-driven-development.md`. Start each meaningful change with a spec in `docs/specs/`, move it through product, design, architecture, build, validation, and release stages, and map acceptance criteria directly to tests before implementation.
 
+- **Non-technical product owner starting a new idea?** Follow
+  [`docs/starting-a-feature-as-a-product-owner.md`](docs/starting-a-feature-as-a-product-owner.md)
+  for step-by-step instructions on writing a feature development intent — no code, no technical
+  detail required.
+- **Want a finished example?** [`docs/specs/example-save-packs.md`](docs/specs/example-save-packs.md)
+  (with a matching [`docs/specs/example-save-packs.yaml`](docs/specs/example-save-packs.yaml)) is a
+  fully worked spec for letting a teacher save a lesson pack, from product intent through
+  architecture and acceptance criteria.
+
 ## Notes & guardrails
 
 - The viewer is a **launch-list**, not an iframe embed. Most sites block being framed

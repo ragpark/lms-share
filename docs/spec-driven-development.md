@@ -2,6 +2,11 @@
 
 Spec Driven Development (SDD) keeps product decisions, design intent, architecture, implementation, tests, and release guardrails in one reviewable trail. The goal is not to slow iteration; it is to make each iteration explicit enough that product managers, designers, architects, and engineers can agree what is changing before code becomes the source of truth.
 
+> **Non-technical product owner?** Start with
+> [Starting a Feature as a Non-Technical Product Owner](starting-a-feature-as-a-product-owner.md)
+> for plain-language, step-by-step instructions on how to turn an idea — such as letting a
+> teacher save a lesson pack — into the first draft of a spec, without writing any code.
+
 ## How to proceed
 
 1. **Create one spec per meaningful product change.** Use `docs/specs/YYYY-MM-DD-short-name.md` for narrative context and, when machine-readable gates help, pair it with `docs/specs/YYYY-MM-DD-short-name.yaml`.
