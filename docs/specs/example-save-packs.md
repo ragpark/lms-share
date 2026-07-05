@@ -1,7 +1,7 @@
 # Spec: Save teacher lesson packs
 
 - **Spec ID:** SDD-2026-001
-- **Status:** draft
+- **Status:** ready-for-build
 - **Owner:** Product owner
 - **Design owner:** Product designer
 - **Architecture owner:** Technical lead
@@ -76,13 +76,21 @@ The feature affects the React Builder experience, server pack APIs, SQLite persi
 ### Data model changes
 | Entity/table | Change | Migration/backfill | Retention |
 | --- | --- | --- | --- |
-| Packs | Add owner/session metadata if private saved packs require identity | Preserve existing anonymous packs and generated share links | Retain until teacher deletes or retention policy is defined |
+| Packs | Add nullable `owner_token TEXT` column | Existing rows get `owner_token = NULL` (unowned/legacy packs); their share URLs keep working via `GET /api/packs/:id`, they just won't appear in anyone's **My packs** list | Retain indefinitely in v1 — no delete/archive and no automatic expiry (see decision log) |
 
 ### Security, privacy, and compliance
-- Decide whether saved packs require teacher accounts before implementation starts.
-- A teacher must not be able to view or edit another teacher's private saved packs.
+- **Decided:** no teacher accounts in this first release. Ownership is a per-pack, per-browser
+  **owner token**: a random token minted client-side on save, stored in `localStorage`, and sent
+  as a bearer credential on `PUT`/`GET /api/my-packs`. There is no login step and no server-side
+  user identity. See decision log.
+- A teacher must not be able to view or edit another teacher's saved packs — enforced by requiring
+  the matching owner token on `PUT` (`403` if it doesn't match) and by scoping `GET /api/my-packs`
+  to packs whose owner token matches the caller's.
 - Validate all URLs using existing `http(s)` pack validation rules.
 - Do not send saved-pack contents to AI review unless the teacher explicitly clicks the AI review action.
+- Owner tokens are a bearer secret scoped to "can this browser edit/list this teacher's saved
+  packs," not an identity system — losing the token (e.g. clearing browser storage) means losing
+  edit/list access to previously saved packs, same as today's behavior for anonymous share links.
 
 ### Observability
 - Log save success and save failure events without sensitive student data.
@@ -115,10 +123,12 @@ The feature affects the React Builder experience, server pack APIs, SQLite persi
 
 ## 6. Implementation plan
 
-- [ ] Confirm whether teacher identity is in scope for the first saved-pack release.
+- [ ] Add the `owner_token` column and migration; mint/store the token client-side per the decided
+      session/browser-based ownership model (no accounts).
 - [ ] Finalize Builder and **My packs** UI states.
-- [ ] Define API routes and database migration.
-- [ ] Implement save, list, reopen, and update flows.
+- [ ] Define API routes (`PUT /api/packs/:id`, `GET /api/my-packs`) and wire owner-token auth.
+- [ ] Implement save, list, reopen, and update flows (update-in-place, same share URL — see
+      decision log).
 - [ ] Add automated tests mapped to acceptance criteria.
 - [ ] Update README or user-facing docs.
 - [ ] Validate Railway deployment and rollback plan.
@@ -130,19 +140,29 @@ The feature affects the React Builder experience, server pack APIs, SQLite persi
 - Do not store data outside the configured Railway persistent volume for production.
 - Keep validation rules for pack URLs at least as strict as the current implementation.
 - Do not make AI review automatic as part of saving.
+- Do not build teacher accounts/login in this feature — ownership is the owner-token model
+  decided in `## 8. Decision log`.
+- Do not add delete/archive or a real retention policy in this feature — explicitly deferred to a
+  follow-up spec.
+- Never log or expose an owner token in a way another teacher's browser could read it (e.g. don't
+  echo it in `GET /api/packs/:id`, the public share-view route).
 
 ## 8. Decision log
 
 | Date | Decision | Options considered | Owner |
 | --- | --- | --- | --- |
 | 2026-07-05 | Treat saved packs as a distinct product workflow that needs identity and persistence decisions before build | Anonymous browser-only saves, private account-based saves, or shared-link-only reuse | Product owner |
+| 2026-07-05 | Ownership: no teacher accounts in v1. Use a random owner token minted client-side on save and stored in `localStorage`, sent as a bearer credential to edit or list packs. Rationale: the app has no auth/session system today (confirmed in `server/index.js`), and adding one is a much larger change than this feature's stated goals justify; a token keeps the "no login" feel of the current share-link flow while still scoping edit/list to the teacher who created the pack. | Local browser/session-token ownership, full account system with login, no ownership (fully public my-packs) | Product owner |
+| 2026-07-05 | Editing a saved pack updates it **in place** — same `id`, same share URL — rather than creating a new version. Rationale: matches AC3 ("the saved pack reflects the latest changes") and preserves the existing share-link contract (goal: "preserve the current share-link behavior") instead of forcing teachers or students to track multiple URLs per pack. | Update in place, create a new pack + new share URL per save, keep version history | Product owner |
+| 2026-07-05 | Delete/archive is out of scope for the first release. | Ship delete/archive in v1, defer to a follow-up spec | Product owner |
+| 2026-07-05 | Retention: saved packs (and existing anonymous packs) are retained indefinitely in v1 — no automatic expiry. A real retention/delete policy is deferred to the same follow-up as delete/archive. | Indefinite retention, time-boxed expiry, defer to follow-up spec | Product owner |
 
 ## 9. Open questions
 
-- [ ] Do teachers sign in, or is the first version based on local browser/session ownership?
-- [ ] Should editing a saved pack update the existing share URL or create a new version?
-- [ ] Is delete/archive required for the first release?
-- [ ] What retention policy should apply to saved packs?
+None blocking `ready-for-build`. All four questions raised during architecture review were
+resolved above (`## 8. Decision log`, 2026-07-05). Delete/archive and a real retention policy are
+explicitly deferred — track them as a follow-up spec once the first saved-pack release ships, not
+as silent scope creep into this one.
 
 ## 10. Release checklist
 

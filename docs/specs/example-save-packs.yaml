@@ -1,6 +1,6 @@
 spec_id: SDD-2026-001
 name: Save teacher lesson packs
-status: draft
+status: ready-for-build
 created: 2026-07-05
 target_release: TBD
 owners:
@@ -109,16 +109,24 @@ architecture:
       error_codes: [401, 500]
   data_changes:
     - entity: packs
-      change: Add owner/session metadata if private saved packs require identity.
-      migration: Preserve existing anonymous packs and generated share links.
-      retention: Retain until teacher deletes or retention policy is defined.
+      change: Add nullable owner_token TEXT column.
+      migration: >-
+        Existing rows get owner_token = NULL (unowned/legacy packs); their share URLs keep
+        working via GET /api/packs/:id, they just do not appear in any My packs list.
+      retention: Retain indefinitely in v1 - no delete/archive, no automatic expiry.
   security_privacy:
     data_classification: Teacher-created lesson metadata and URLs; avoid student personal data.
-    authz: A teacher must not be able to view or edit another teacher's private saved packs.
+    authz: >-
+      No accounts in v1. A random owner_token is minted client-side on save, stored in
+      localStorage, and sent as a bearer credential on PUT /api/packs/:id and
+      GET /api/my-packs. A teacher must not be able to view or edit another teacher's saved
+      packs; enforced by requiring the matching owner_token (403 on mismatch) and by scoping
+      GET /api/my-packs to the caller's token.
     input_validation: Continue to allow only valid http(s) URLs using pack validation rules.
     abuse_cases:
       - Teacher attempts to edit another teacher's saved pack.
       - Malicious or non-http URL is submitted for saving.
+      - owner_token leaked via a public route (e.g. echoed in GET /api/packs/:id).
   observability:
     logs:
       - saved_pack_create_success
@@ -189,35 +197,33 @@ guardrails:
   dependency_policy: Prefer existing stack unless architecture review approves a new dependency.
   backward_compatibility: Existing generated share URLs must continue to work.
   railway_storage: Production saved-pack data must use the configured Railway persistent volume, not ephemeral filesystem storage.
+  no_accounts_in_v1: Do not build teacher accounts/login; ownership is the owner_token model decided below.
+  no_delete_archive_in_v1: Do not add delete/archive or a real retention policy; deferred to a follow-up spec.
   documentation_required: true
 implementation:
   tasks:
     - id: TASK1
-      description: Confirm teacher identity and ownership model.
-      owner: Product and architecture
+      description: >-
+        Add the owner_token column/migration and mint/store the token client-side per the
+        decided session/browser-based ownership model (no accounts).
+      owner: Engineering
       status: todo
     - id: TASK2
       description: Finalize Builder and My packs UI states.
       owner: Design
       status: todo
     - id: TASK3
-      description: Define database migration and API routes.
+      description: >-
+        Define database migration and API routes (PUT /api/packs/:id, GET /api/my-packs) with
+        owner-token auth.
       owner: Architecture and engineering
       status: todo
     - id: TASK4
-      description: Implement save, list, reopen, and update flows with tests.
+      description: >-
+        Implement save, list, reopen, and update-in-place flows (same share URL) with tests.
       owner: Engineering
       status: todo
-open_questions:
-  - question: Do teachers sign in, or is the first version based on local browser/session ownership?
-    owner: Product owner
-    due: TBD
-  - question: Should editing a saved pack update the existing share URL or create a new version?
-    owner: Product owner
-    due: TBD
-  - question: Is delete/archive required for the first release?
-    owner: Product owner
-    due: TBD
+open_questions: []
 decisions:
   - date: 2026-07-05
     decision: Treat saved packs as a distinct product workflow that needs identity and persistence decisions before build.
@@ -225,6 +231,40 @@ decisions:
       - Anonymous browser-only saves
       - Private account-based saves
       - Shared-link-only reuse
+    owner: Product owner
+  - date: 2026-07-05
+    decision: >-
+      Ownership: no teacher accounts in v1. Use a random owner_token minted client-side on save,
+      stored in localStorage, sent as a bearer credential on PUT/GET-my-packs. No auth/session
+      system exists in the app today, and building one is out of proportion to this feature.
+    options_considered:
+      - Local browser/session-token ownership
+      - Full account system with login
+      - No ownership (fully public my-packs)
+    owner: Product owner
+  - date: 2026-07-05
+    decision: >-
+      Editing a saved pack updates it in place (same id, same share URL) rather than creating a
+      new version, matching AC3 and the goal of preserving existing share-link behavior.
+    options_considered:
+      - Update in place
+      - Create a new pack + new share URL per save
+      - Keep version history
+    owner: Product owner
+  - date: 2026-07-05
+    decision: Delete/archive is out of scope for the first release; deferred to a follow-up spec.
+    options_considered:
+      - Ship delete/archive in v1
+      - Defer to a follow-up spec
+    owner: Product owner
+  - date: 2026-07-05
+    decision: >-
+      Retention: saved packs and existing anonymous packs are retained indefinitely in v1, no
+      automatic expiry. A real retention/delete policy is deferred alongside delete/archive.
+    options_considered:
+      - Indefinite retention
+      - Time-boxed expiry
+      - Defer policy to follow-up spec
     owner: Product owner
 release_checklist:
   product_acceptance: false
