@@ -102,7 +102,12 @@ export async function reviewDraftPack(pack, options = {}) {
   });
 
   if (!response.ok) throw new Error('AI review failed. Please try again later.');
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error('AI review returned an empty or unreadable response. Please try again.');
+  }
   const content = data?.choices?.[0]?.message?.content;
   let parsed;
   try {
