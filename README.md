@@ -143,6 +143,10 @@ railway domain
 Validation (in `server/validate.js`): title required, ≤ 50 items, each item must be a valid
 `http(s)` URL. Non-http schemes (e.g. `javascript:`) are rejected.
 
+## Spec Driven Development
+
+Future product, design, architecture, engineering, testing, and release guardrails can be coordinated through the Spec Driven Development playbook in `docs/spec-driven-development.md`. Start each meaningful change with a spec in `docs/specs/`, move it through product, design, architecture, build, validation, and release stages, and map acceptance criteria directly to tests before implementation.
+
 ## Notes & guardrails
 
 - The viewer is a **launch-list**, not an iframe embed. Most sites block being framed
