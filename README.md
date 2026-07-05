@@ -159,6 +159,10 @@ Future product, design, architecture, engineering, testing, and release guardrai
   [`docs/architecting-a-feature-as-an-architect.md`](docs/architecting-a-feature-as-an-architect.md)
   for step-by-step instructions on turning the approved product brief and design section into API,
   data, security, observability, and rollout decisions — no code required.
+- **Engineer picking up a spec from product, design, and architecture?** Follow
+  [`docs/implementing-a-feature-as-an-engineer.md`](docs/implementing-a-feature-as-an-engineer.md)
+  for step-by-step instructions on turning the approved spec into acceptance criteria, a test
+  plan, an implementation plan, and working, tested code.
 - **Want a finished example?** [`docs/specs/example-save-packs.md`](docs/specs/example-save-packs.md)
   (with a matching [`docs/specs/example-save-packs.yaml`](docs/specs/example-save-packs.yaml)) is a
   fully worked spec for letting a teacher save a lesson pack, from product intent through
