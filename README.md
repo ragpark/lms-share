@@ -151,6 +151,10 @@ Future product, design, architecture, engineering, testing, and release guardrai
   [`docs/starting-a-feature-as-a-product-owner.md`](docs/starting-a-feature-as-a-product-owner.md)
   for step-by-step instructions on writing a feature development intent — no code, no technical
   detail required.
+- **UX designer picking up a spec from product?** Follow
+  [`docs/designing-a-feature-as-a-ux-designer.md`](docs/designing-a-feature-as-a-ux-designer.md)
+  for step-by-step instructions on turning the approved product brief into user journeys, UI
+  states, content, and accessibility requirements — no code required.
 - **Want a finished example?** [`docs/specs/example-save-packs.md`](docs/specs/example-save-packs.md)
   (with a matching [`docs/specs/example-save-packs.yaml`](docs/specs/example-save-packs.yaml)) is a
   fully worked spec for letting a teacher save a lesson pack, from product intent through

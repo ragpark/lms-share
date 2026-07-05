@@ -6,6 +6,11 @@ Spec Driven Development (SDD) keeps product decisions, design intent, architectu
 > [Starting a Feature as a Non-Technical Product Owner](starting-a-feature-as-a-product-owner.md)
 > for plain-language, step-by-step instructions on how to turn an idea — such as letting a
 > teacher save a lesson pack — into the first draft of a spec, without writing any code.
+>
+> **UX designer picking up a spec from product?** Continue with
+> [Designing a Feature as a UX Designer](designing-a-feature-as-a-ux-designer.md) for
+> step-by-step instructions on turning an approved product brief into the experience and design
+> section of the same spec, without writing any code.
 
 ## How to proceed
 
