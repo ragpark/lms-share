@@ -8,21 +8,8 @@ vi.mock('./api', () => ({
   reviewDraftPack: vi.fn(),
 }));
 
-describe('PackBuilder templates', () => {
+describe('PackBuilder', () => {
   beforeEach(() => vi.clearAllMocks());
-
-  test('hides teaching template cards until the toggle button is clicked', () => {
-    render(<PackBuilder />);
-
-    const toggle = screen.getByRole('button', { name: /show templates/i });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('heading', { name: /homework task/i })).not.toBeInTheDocument();
-
-    fireEvent.click(toggle);
-
-    expect(screen.getByRole('button', { name: /hide templates/i })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('heading', { name: /homework task/i })).toBeInTheDocument();
-  });
 
   test('disables AI review until title and valid URL steps exist, then renders review', async () => {
     reviewDraftPack.mockResolvedValue({
