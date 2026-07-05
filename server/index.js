@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import { validatePack } from './validate.js';
+import { handleReviewDraft } from './reviewDraftRoute.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -49,6 +50,8 @@ app.post('/api/packs', (req, res) => {
   }
   return res.status(500).json({ error: 'Could not allocate a pack id, please retry.' });
 });
+
+app.post('/api/packs/review-draft', handleReviewDraft);
 
 app.get('/api/packs/:id', (req, res) => {
   const row = selectById.get(req.params.id);

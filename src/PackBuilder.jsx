@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import ShareToClass from './ShareToClass';
-import { createPack } from './api';
+import { createPack, reviewDraftPack } from './api';
 
 const isHttp = (v) => /^https?:\/\//i.test(v.trim());
 
@@ -104,6 +104,9 @@ export default function PackBuilder() {
   const [importedStep, setImportedStep] = useState(null); // { href, title }
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [review, setReview] = useState(null);
+  const [reviewError, setReviewError] = useState(null);
+  const [reviewing, setReviewing] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -121,6 +124,11 @@ export default function PackBuilder() {
     const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
     window.history.replaceState({}, '', nextUrl);
   }, []);
+
+  useEffect(() => {
+    setReview(null);
+    setReviewError(null);
+  }, [title, items]);
 
   const addItem = () => {
     const href = draftUrl.trim();
@@ -163,6 +171,21 @@ export default function PackBuilder() {
       [next[i], next[j]] = [next[j], next[i]];
       return next;
     });
+
+  const canReview = title.trim() && items.length > 0 && !items.some((it) => !isHttp(it.href || '')) && !reviewing;
+
+  const reviewDraft = async () => {
+    setReviewError(null);
+    setReviewing(true);
+    try {
+      const res = await reviewDraftPack({ title, items });
+      setReview(res);
+    } catch (e) {
+      setReviewError(e.message === 'AI review is not configured.' ? 'AI review is not configured. You can still create and share the pack as normal.' : e.message);
+    } finally {
+      setReviewing(false);
+    }
+  };
 
   const save = async () => {
     setError(null);
@@ -361,6 +384,19 @@ export default function PackBuilder() {
             </ol>
           )}
 
+          <section style={styles.reviewPanel} aria-labelledby="ai-review">
+            <div>
+              <div style={styles.eyebrow}>Advisory AI review</div>
+              <h2 id="ai-review" style={styles.panelTitle}>Check the draft before creating it.</h2>
+              <p style={styles.panelHint}>Phase 1 uses only your pack title, step order, titles, instructions, durations, URLs and domains. It does not inspect the actual web pages.</p>
+            </div>
+            <button type="button" style={styles.secondaryWide} onClick={reviewDraft} disabled={!canReview}>
+              {reviewing ? 'Reviewing…' : 'Review lesson with AI'}
+            </button>
+            {reviewError && <p role="alert" style={styles.error}>{reviewError}</p>}
+            {review && <ReviewResult review={review} />}
+          </section>
+
           <button style={styles.primaryWide} onClick={save} disabled={saving || !title.trim() || items.length === 0 || items.some((it) => !isHttp(it.href || ''))}>
             {saving ? 'Creating…' : `Create pack (${items.length} step${items.length === 1 ? '' : 's'})`}
           </button>
@@ -368,6 +404,37 @@ export default function PackBuilder() {
       </div>
     </PageShell>
   );
+}
+
+function ReviewResult({ review }) {
+  return (
+    <article style={styles.reviewResult}>
+      <ReviewBlock title="Summary"><p style={styles.reviewText}>{review.summary}</p></ReviewBlock>
+      <ReviewBlock title="Overall coherence"><p style={styles.reviewText}><strong>{review.coherence.rating.replace('_', ' ')}</strong>: {review.coherence.comment}</p></ReviewBlock>
+      <ReviewBlock title="Best suited for"><TagList items={review.bestSuitedFor} /></ReviewBlock>
+      <ReviewBlock title="Pedagogical approach"><p style={styles.reviewText}><strong>{review.pedagogicalApproach.label}</strong>: {review.pedagogicalApproach.comment}</p></ReviewBlock>
+      <ReviewBlock title="Metacognitive support"><p style={styles.reviewText}><strong>{review.metacognition.rating}</strong>: {review.metacognition.comment}</p><TagList items={review.metacognition.missingPrompts} /></ReviewBlock>
+      <ReviewBlock title="Strengths"><BulletList items={review.strengths} /></ReviewBlock>
+      <ReviewBlock title="Risks or gaps"><BulletList items={review.risksOrGaps} /></ReviewBlock>
+      <ReviewBlock title="Suggested improvements"><BulletList items={review.suggestedImprovements} /></ReviewBlock>
+      <ReviewBlock title="Per-step notes">
+        <ol style={styles.reviewList}>{review.stepNotes.map((note) => <li key={`${note.step}-${note.title}`}><strong>Step {note.step}: {note.title}</strong><br />{note.comment}{note.suggestion && <em> Suggestion: {note.suggestion}</em>}</li>)}</ol>
+      </ReviewBlock>
+      <ReviewBlock title="Limitations"><BulletList items={review.limitations} /></ReviewBlock>
+    </article>
+  );
+}
+
+function ReviewBlock({ title, children }) {
+  return <section style={styles.reviewBlock}><h3 style={styles.reviewHeading}>{title}</h3>{children}</section>;
+}
+
+function BulletList({ items }) {
+  return items?.length ? <ul style={styles.reviewList}>{items.map((item) => <li key={item}>{item}</li>)}</ul> : <p style={styles.reviewText}>No specific notes.</p>;
+}
+
+function TagList({ items }) {
+  return items?.length ? <div style={styles.tagList}>{items.map((item) => <span key={item} style={styles.tag}>{item}</span>)}</div> : <p style={styles.reviewText}>No specific notes.</p>;
 }
 
 function PageShell({ children }) {
@@ -422,10 +489,19 @@ const styles = {
   icon: { width: 34, height: 34, border: '1px solid #cbd5e1', borderRadius: 12, background: '#f8fafc', cursor: 'pointer', color: '#334155' },
   iconDanger: { width: 34, height: 34, border: '1px solid #fecaca', borderRadius: 12, background: '#fff7f7', cursor: 'pointer', color: '#b91c1c' },
   primary: { padding: '12px 18px', border: 'none', borderRadius: 14, background: '#0f766e', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 12px 24px rgba(15, 118, 110, .18)' },
+  secondaryWide: { width: '100%', padding: '13px 18px', border: '1px solid #cbd5e1', borderRadius: 16, background: '#fff', fontSize: 15, fontWeight: 850, cursor: 'pointer', color: '#334155' },
   primaryWide: { width: '100%', padding: '14px 18px', border: 'none', borderRadius: 16, background: '#0f766e', color: '#fff', fontSize: 15, fontWeight: 850, cursor: 'pointer', boxShadow: '0 12px 24px rgba(15, 118, 110, .18)' },
   secondary: { padding: '11px 16px', border: '1px solid #cbd5e1', borderRadius: 14, background: '#fff', fontSize: 14, fontWeight: 750, cursor: 'pointer', color: '#334155' },
   linkButton: { justifySelf: 'start', padding: 0, border: 'none', background: 'transparent', color: '#0f766e', textDecoration: 'underline', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
   error: { color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 14, padding: '10px 12px', fontSize: 13 },
+  reviewPanel: { display: 'grid', gap: 14, margin: '20px 0 12px', padding: 18, border: '1px solid #bae6fd', borderRadius: 22, background: '#f0f9ff' },
+  reviewResult: { display: 'grid', gap: 12, padding: 14, border: '1px solid #dbeafe', borderRadius: 18, background: '#fff' },
+  reviewBlock: { display: 'grid', gap: 6 },
+  reviewHeading: { margin: 0, fontSize: 14, color: '#0f766e' },
+  reviewText: { margin: 0, color: '#334155', fontSize: 13, lineHeight: 1.5 },
+  reviewList: { margin: 0, paddingLeft: 20, color: '#334155', fontSize: 13, lineHeight: 1.5 },
+  tagList: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+  tag: { padding: '5px 8px', borderRadius: 999, background: '#ccfbf1', color: '#115e59', fontSize: 12, fontWeight: 750 },
   packLink: { display: 'inline-block', margin: '6px 0 4px', color: '#0f766e', wordBreak: 'break-all', fontWeight: 750 },
   divider: { height: 1, background: '#e2e8f0', margin: '26px 0' },
 };

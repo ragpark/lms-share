@@ -1,3 +1,20 @@
+async function readJsonResponse(res, fallbackMessage) {
+  const text = await res.text();
+  if (!text.trim()) {
+    throw new Error(fallbackMessage);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(fallbackMessage);
+  }
+}
+
+function errorMessageFrom(data, fallbackMessage) {
+  return (data.errors && data.errors.join(' ')) || data.error || fallbackMessage;
+}
+
 export async function createPack(pack) {
   const res = await fetch('/api/packs', {
     method: 'POST',
@@ -5,15 +22,28 @@ export async function createPack(pack) {
     body: JSON.stringify(pack),
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error((data.errors && data.errors.join(' ')) || data.error || 'Failed to create pack');
+    const data = await readJsonResponse(res, 'Failed to create pack').catch(() => ({}));
+    throw new Error(errorMessageFrom(data, 'Failed to create pack'));
   }
-  return res.json(); // { id, url }
+  return readJsonResponse(res, 'Failed to create pack'); // { id, url }
+}
+
+export async function reviewDraftPack(pack) {
+  const res = await fetch('/api/packs/review-draft', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pack),
+  });
+  if (!res.ok) {
+    const data = await readJsonResponse(res, 'Failed to review draft pack').catch(() => ({}));
+    throw new Error(errorMessageFrom(data, 'Failed to review draft pack'));
+  }
+  return readJsonResponse(res, 'AI review did not return a usable response. Please try again.');
 }
 
 export async function fetchPack(id) {
   const res = await fetch(`/api/packs/${id}`);
   if (res.status === 404) throw new Error('Pack not found');
   if (!res.ok) throw new Error('Failed to load pack');
-  return res.json(); // { id, title, items, createdAt }
+  return readJsonResponse(res, 'Failed to load pack'); // { id, title, items, createdAt }
 }
