@@ -4,7 +4,9 @@ Teachers assemble a **sequence of links** into a lesson pack; the pack resolves 
 URL that they share into **Google Classroom** or **Microsoft Teams for Education** using the
 built-in share buttons.
 
-- **Builder** (`/`) — title the pack, add/reorder link steps, optionally request an advisory Phase 1 AI review, create it, share the URL.
+- **Builder** (`/`) — title the pack, add/reorder link steps, optionally request an advisory Phase 1 AI review, save it, share the URL.
+- **My packs** (`/my-packs`) — a teacher's saved packs on this browser, with links to reopen and edit.
+- **Builder, editing** (`/pack/:id/edit`) — reopens a saved pack for editing; saving updates it in place (same id, same share URL).
 - **Viewer** (`/pack/:id`) — a step-through player for students; the single shareable link.
 - **Share** — `ShareToClass` (Classroom + Teams) surfaces automatically once a pack is created.
 - **Browser extension** (`extension/`) — Chrome/Edge helper that sends the current tab URL into
@@ -12,6 +14,15 @@ built-in share buttons.
 
 This version supports **URL items only** (file upload is a later step). Sharing is still the
 link tier — no grade passback yet.
+
+### Saving and reopening packs (SDD-2026-001)
+
+There are no teacher accounts in this release. Ownership is a random **owner token** minted in
+the browser (`src/ownerToken.js`), stored in `localStorage`, and sent as a bearer credential when
+creating, editing, or listing packs. Losing that token (e.g. clearing browser storage) means
+losing edit/list access to previously saved packs, the same way losing a share link does today.
+Saved packs are retained indefinitely — there's no delete/archive/expiry in this release (tracked
+as a follow-up). See `docs/specs/example-save-packs.md` for the full spec.
 
 ## Architecture
 
@@ -23,12 +34,17 @@ A single Express service:
 
 ```
 server/
-  index.js        Express: pack API + AI draft review route + SQLite + static SPA serving
+  index.js        Express: wires routes + SQLite store + static SPA serving
+  packsStore.js   SQLite persistence for packs (owner_token, updated_at) — unit-tested
+  packsRoutes.js  Pack create/update/get/my-packs route handlers — unit-tested
   aiReview.js     Server-side OpenAI draft lesson-pack review helper
-  validate.js     Pure pack validation (http(s) only, caps) — unit-tested
+  reviewDraftRoute.js  POST /api/packs/review-draft handler
+  validate.js     Pure pack + owner-token validation (http(s) only, caps) — unit-tested
 src/
-  PackBuilder.jsx Build + create + share
-  PackViewer.jsx  Resolve + step through
+  PackBuilder.jsx Build + create/edit + save + share (also handles /pack/:id/edit)
+  MyPacks.jsx     Lists the current browser's saved packs
+  PackViewer.jsx  Resolve + step through (student view, unchanged by saved packs)
+  ownerToken.js   Mints/reads the per-browser owner token used for save/edit/list
   ShareToClass.jsx / ResourceShareMenu.jsx   (unchanged share components)
   api.js          fetch helpers
 extension/
@@ -117,6 +133,12 @@ scripts need.
 **⚠️ Add a volume, or packs vanish on every redeploy.** SQLite writes to a file; without a
 persistent volume that file lives in the ephemeral container.
 
+**Schema migrations are automatic and additive.** On startup, `server/packsStore.js` adds the
+`owner_token`/`updated_at` columns if they're missing (`ALTER TABLE ... ADD COLUMN`, both
+nullable) — safe to run against an existing production database with no manual migration step
+and no data loss. Rows saved before this release keep `owner_token = NULL`: their share URLs keep
+working, they just won't appear in anyone's **My packs** list.
+
 1. New Project → **Deploy from GitHub repo** → pick `lms-share`.
 2. Service → **Settings → Volumes → Add Volume**, mount path `/data`.
 3. Service → **Variables** → add `DATA_DIR=/data`.
@@ -136,12 +158,15 @@ railway domain
 
 | Method | Route | Body / result |
 |--------|-------|---------------|
-| `POST` | `/api/packs` | `{ title, items: [{ type:'url', href, title, instruction, duration }] }` → `201 { id, url }` |
+| `POST` | `/api/packs` | `{ title, items: [{ type:'url', href, title, instruction, duration }] }` (optional `Authorization: Bearer <ownerToken>`) → `201 { id, url }` |
+| `PUT`  | `/api/packs/:id` | Same shape as create, requires `Authorization: Bearer <ownerToken>` matching the pack's owner → `200 { id, title, items, updatedAt, url }`, `403` if missing/mismatched, `404` if not found |
+| `GET`  | `/api/my-packs` | Requires `Authorization: Bearer <ownerToken>` → `200 { packs: [{ id, title, itemCount, createdAt, updatedAt, url }] }`, `401` without a token |
 | `POST` | `/api/packs/review-draft` | Same draft shape as pack creation → structured advisory AI review; does not persist |
-| `GET`  | `/api/packs/:id` | `200 { id, title, items, createdAt }` or `404` |
+| `GET`  | `/api/packs/:id` | `200 { id, title, items, createdAt }` or `404` — public share-view route, never includes the owner token |
 
 Validation (in `server/validate.js`): title required, ≤ 50 items, each item must be a valid
-`http(s)` URL. Non-http schemes (e.g. `javascript:`) are rejected.
+`http(s)` URL. Non-http schemes (e.g. `javascript:`) are rejected. Owner tokens are validated
+against a base64url pattern (16-128 chars); see [Saving and reopening packs](#saving-and-reopening-packs-sdd-2026-001) above.
 
 ## Spec Driven Development
 

@@ -168,29 +168,29 @@ acceptance_criteria:
 tests:
   - ac: AC1
     type: integration
-    path: server saved-pack create tests
+    path: server/packsRoutes.test.js, server/packsStore.test.js, src/PackBuilder.test.jsx
     owner: Engineering
-    status: planned
+    status: passing
   - ac: AC2
     type: component_or_e2e
-    path: My packs UI tests
+    path: src/MyPacks.test.jsx
     owner: Engineering
-    status: planned
+    status: passing
   - ac: AC3
     type: integration
-    path: saved-pack update API tests
+    path: server/packsRoutes.test.js, server/packsStore.test.js, src/PackBuilder.test.jsx
     owner: Engineering
-    status: planned
+    status: passing
   - ac: AC4
     type: component
-    path: save failure UI test
+    path: src/PackBuilder.test.jsx
     owner: Engineering
-    status: planned
+    status: passing
   - ac: AC5
     type: regression
-    path: Pack viewer tests
+    path: src/PackViewer.test.jsx
     owner: Engineering
-    status: planned
+    status: passing
 guardrails:
   performance_budget: My packs should load quickly for a normal teacher account; exact budget TBD during architecture review.
   browser_support: Match existing LMS Share browser support.
@@ -207,22 +207,22 @@ implementation:
         Add the owner_token column/migration and mint/store the token client-side per the
         decided session/browser-based ownership model (no accounts).
       owner: Engineering
-      status: todo
+      status: done
     - id: TASK2
       description: Finalize Builder and My packs UI states.
       owner: Design
-      status: todo
+      status: done
     - id: TASK3
       description: >-
         Define database migration and API routes (PUT /api/packs/:id, GET /api/my-packs) with
         owner-token auth.
       owner: Architecture and engineering
-      status: todo
+      status: done
     - id: TASK4
       description: >-
         Implement save, list, reopen, and update-in-place flows (same share URL) with tests.
       owner: Engineering
-      status: todo
+      status: done
 open_questions: []
 decisions:
   - date: 2026-07-05
@@ -267,12 +267,12 @@ decisions:
       - Defer policy to follow-up spec
     owner: Product owner
 release_checklist:
-  product_acceptance: false
-  design_acceptance: false
-  architecture_acceptance: false
-  tests_passing: false
-  accessibility_checked: false
-  observability_ready: false
-  rollback_ready: false
-  docs_updated: false
-  railway_persistent_storage_confirmed: false
+  product_acceptance: false # pending product owner sign-off
+  design_acceptance: false # pending design owner sign-off
+  architecture_acceptance: false # pending architecture/tech lead sign-off
+  tests_passing: true # 59/59 vitest tests passing locally as of this change; not yet observed in CI
+  accessibility_checked: false # keyboard reachability, role=alert/status, and focus management added; formal manual a11y checklist not yet run
+  observability_ready: false # saved_pack_create_success/failure and saved_pack_update_success/failure are logged (server/packsRoutes.js); no alerting/dashboard wired up yet
+  rollback_ready: false # additive/nullable migration only (see packsStore.js), but not exercised against a real Railway rollback
+  docs_updated: true
+  railway_persistent_storage_confirmed: false # migration is additive and safe by design; not verified against a live Railway volume

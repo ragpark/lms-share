@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import ShareToClass from './ShareToClass';
-import { createPack, reviewDraftPack } from './api';
+import { createPack, updatePack, fetchPack, reviewDraftPack } from './api';
 
 const isHttp = (v) => /^https?:\/\//i.test(v.trim());
 
 export default function PackBuilder() {
+  const { id: editId } = useParams();
+  const isEditing = Boolean(editId);
+
   const [title, setTitle] = useState('');
   const [items, setItems] = useState([]);
   const [draftUrl, setDraftUrl] = useState('');
@@ -16,8 +20,32 @@ export default function PackBuilder() {
   const [review, setReview] = useState(null);
   const [reviewError, setReviewError] = useState(null);
   const [reviewing, setReviewing] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(isEditing);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
+    if (!isEditing) return;
+    let cancelled = false;
+    setLoadingExisting(true);
+    setLoadError(null);
+    fetchPack(editId)
+      .then((pack) => {
+        if (cancelled) return;
+        setTitle(pack.title);
+        setItems(pack.items);
+        setLoadingExisting(false);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setLoadError(e.message);
+        setLoadingExisting(false);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId]);
+
+  useEffect(() => {
+    if (isEditing) return;
     const params = new URLSearchParams(window.location.search);
     const importedHref = params.get('addUrl')?.trim();
     if (!importedHref) return;
@@ -97,7 +125,7 @@ export default function PackBuilder() {
         setError('Add a valid http(s) URL to every step before creating the pack.');
         return;
       }
-      const res = await createPack({ title, items });
+      const res = isEditing ? await updatePack(editId, { title, items }) : await createPack({ title, items });
       setResult(res);
     } catch (e) {
       setError(e.message);
@@ -106,14 +134,33 @@ export default function PackBuilder() {
     }
   };
 
+  if (isEditing && loadingExisting) {
+    return (
+      <PageShell>
+        <p role="status" style={styles.note}>Loading your saved pack…</p>
+      </PageShell>
+    );
+  }
+
+  if (isEditing && loadError) {
+    return (
+      <PageShell>
+        <p role="alert" style={styles.error}>{loadError}</p>
+        <p><Link to="/my-packs" style={styles.linkButton}>Back to My packs</Link></p>
+      </PageShell>
+    );
+  }
+
   if (result) {
     const packUrl = `${window.location.origin}${result.url}`;
     return (
       <PageShell>
         <section style={styles.successCard}>
           <div style={styles.eyebrow}>Ready for class</div>
-          <h1 style={styles.h1}>Lesson pack created</h1>
-          <p style={styles.note}>Share one tidy link that opens the full sequence for your learners.</p>
+          <h1 style={styles.h1}>{isEditing ? 'Lesson pack saved' : 'Lesson pack created'}</h1>
+          <p style={styles.note} role="status">
+            {isEditing ? 'Your changes are saved. The share link stays the same.' : 'Share one tidy link that opens the full sequence for your learners.'}
+          </p>
           <a href={packUrl} style={styles.packLink}>{packUrl}</a>
 
           <div style={styles.divider} />
@@ -129,10 +176,17 @@ export default function PackBuilder() {
             }}
           />
 
-          <p style={{ marginTop: 28 }}>
-            <button style={styles.secondary} onClick={() => { setResult(null); setItems([]); setTitle(''); }}>
-              Build another pack
-            </button>
+          <p style={{ marginTop: 28, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {isEditing ? (
+              <>
+                <button style={styles.secondary} onClick={() => setResult(null)}>Continue editing</button>
+                <Link to="/my-packs" style={styles.linkButton}>Back to My packs</Link>
+              </>
+            ) : (
+              <button style={styles.secondary} onClick={() => { setResult(null); setItems([]); setTitle(''); }}>
+                Build another pack
+              </button>
+            )}
           </p>
         </section>
       </PageShell>
@@ -141,12 +195,17 @@ export default function PackBuilder() {
 
   return (
     <PageShell>
+      <nav style={styles.topNav} aria-label="Pack navigation">
+        <Link to="/my-packs" style={styles.linkButton}>My packs</Link>
+      </nav>
       <section style={styles.hero}>
         <div>
           <div style={styles.eyebrow}>LMS Share for teachers</div>
-          <h1 style={styles.heroTitle}>Build a polished lesson pack in minutes.</h1>
+          <h1 style={styles.heroTitle}>{isEditing ? 'Edit your lesson pack.' : 'Build a polished lesson pack in minutes.'}</h1>
           <p style={styles.heroText}>
-            Curate web links into a clear teaching sequence, then share a single URL to Google Classroom or Microsoft Teams.
+            {isEditing
+              ? 'Update the title or steps, then save to update this pack in place — the share link stays the same.'
+              : 'Curate web links into a clear teaching sequence, then share a single URL to Google Classroom or Microsoft Teams.'}
           </p>
         </div>
         <div style={styles.statCard} aria-label={`${items.length} steps currently in this pack`}>
@@ -263,7 +322,9 @@ export default function PackBuilder() {
           </section>
 
           <button style={styles.primaryWide} onClick={save} disabled={saving || !title.trim() || items.length === 0 || items.some((it) => !isHttp(it.href || ''))}>
-            {saving ? 'Creating…' : `Create pack (${items.length} step${items.length === 1 ? '' : 's'})`}
+            {saving
+              ? (isEditing ? 'Saving…' : 'Creating…')
+              : (isEditing ? `Save changes (${items.length} step${items.length === 1 ? '' : 's'})` : `Create pack (${items.length} step${items.length === 1 ? '' : 's'})`)}
           </button>
         </section>
       </div>
@@ -308,6 +369,7 @@ function PageShell({ children }) {
 
 const styles = {
   main: { minHeight: '100vh', padding: '48px 20px 64px', fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#13201f', background: 'radial-gradient(circle at top left, #dff7ef 0, transparent 34%), linear-gradient(135deg, #f8fbfa 0%, #eef7f4 100%)', boxSizing: 'border-box' },
+  topNav: { maxWidth: 1040, margin: '0 auto 16px', display: 'flex', justifyContent: 'flex-end' },
   hero: { maxWidth: 1040, margin: '0 auto 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24, alignItems: 'end' },
   eyebrow: { color: '#0f766e', fontSize: 13, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 10 },
   heroTitle: { fontSize: 'clamp(34px, 6vw, 64px)', lineHeight: .95, letterSpacing: '-.06em', margin: 0, maxWidth: 760 },

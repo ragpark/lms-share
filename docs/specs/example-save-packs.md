@@ -123,15 +123,17 @@ The feature affects the React Builder experience, server pack APIs, SQLite persi
 
 ## 6. Implementation plan
 
-- [ ] Add the `owner_token` column and migration; mint/store the token client-side per the decided
+- [x] Add the `owner_token` column and migration; mint/store the token client-side per the decided
       session/browser-based ownership model (no accounts).
-- [ ] Finalize Builder and **My packs** UI states.
-- [ ] Define API routes (`PUT /api/packs/:id`, `GET /api/my-packs`) and wire owner-token auth.
-- [ ] Implement save, list, reopen, and update flows (update-in-place, same share URL — see
+- [x] Finalize Builder and **My packs** UI states.
+- [x] Define API routes (`PUT /api/packs/:id`, `GET /api/my-packs`) and wire owner-token auth.
+- [x] Implement save, list, reopen, and update flows (update-in-place, same share URL — see
       decision log).
-- [ ] Add automated tests mapped to acceptance criteria.
-- [ ] Update README or user-facing docs.
-- [ ] Validate Railway deployment and rollback plan.
+- [x] Add automated tests mapped to acceptance criteria.
+- [x] Update README or user-facing docs.
+- [ ] Validate Railway deployment and rollback plan. (Migration is additive/nullable and verified
+      locally — see decision log and README — but not exercised against a live Railway
+      environment in this change.)
 
 ## 7. Guardrails
 
@@ -169,8 +171,12 @@ as silent scope creep into this one.
 - [ ] Product acceptance completed.
 - [ ] Design acceptance completed.
 - [ ] Architecture review completed.
-- [ ] Automated tests added or updated.
-- [ ] Accessibility checks completed.
-- [ ] Railway persistent storage behavior confirmed.
+- [x] Automated tests added or updated. (59/59 passing locally; see `## 5. Test plan` and the
+      paired YAML `tests[].status`.)
+- [ ] Accessibility checks completed. (Keyboard reachability, `role="alert"`/`role="status"`
+      announcements, and predictable focus on **My packs** are implemented; a formal manual
+      accessibility pass has not been run.)
+- [ ] Railway persistent storage behavior confirmed. (Migration is additive/nullable and verified
+      against a local SQLite file across a process restart; not verified on a live Railway volume.)
 - [ ] Rollback plan confirmed.
-- [ ] User/admin/support documentation updated.
+- [x] User/admin/support documentation updated. (`README.md`.)

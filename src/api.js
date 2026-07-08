@@ -1,3 +1,5 @@
+import { getOwnerToken } from './ownerToken.js';
+
 async function readJsonResponse(res, fallbackMessage) {
   const text = await res.text();
   if (!text.trim()) {
@@ -18,7 +20,7 @@ function errorMessageFrom(data, fallbackMessage) {
 export async function createPack(pack) {
   const res = await fetch('/api/packs', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getOwnerToken()}` },
     body: JSON.stringify(pack),
   });
   if (!res.ok) {
@@ -26,6 +28,30 @@ export async function createPack(pack) {
     throw new Error(errorMessageFrom(data, 'Failed to create pack'));
   }
   return readJsonResponse(res, 'Failed to create pack'); // { id, url }
+}
+
+export async function updatePack(id, pack) {
+  const res = await fetch(`/api/packs/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getOwnerToken()}` },
+    body: JSON.stringify(pack),
+  });
+  if (!res.ok) {
+    const data = await readJsonResponse(res, 'Failed to save changes').catch(() => ({}));
+    throw new Error(errorMessageFrom(data, 'Failed to save changes'));
+  }
+  return readJsonResponse(res, 'Failed to save changes'); // { id, title, items, updatedAt, url }
+}
+
+export async function fetchMyPacks() {
+  const res = await fetch('/api/my-packs', {
+    headers: { Authorization: `Bearer ${getOwnerToken()}` },
+  });
+  if (!res.ok) {
+    const data = await readJsonResponse(res, 'Failed to load saved packs').catch(() => ({}));
+    throw new Error(errorMessageFrom(data, 'Failed to load saved packs'));
+  }
+  return readJsonResponse(res, 'Failed to load saved packs'); // { packs: [...] }
 }
 
 export async function reviewDraftPack(pack) {

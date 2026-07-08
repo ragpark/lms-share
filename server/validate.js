@@ -5,6 +5,13 @@ export const MAX_TITLE = 200;
 export const MAX_INSTRUCTION = 500;
 export const MAX_DURATION = 40;
 
+// Owner tokens are minted client-side (see src/ownerToken.js) as base64url random bytes.
+export const OWNER_TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
+
+export function isValidOwnerToken(token) {
+  return typeof token === 'string' && OWNER_TOKEN_PATTERN.test(token);
+}
+
 export function isHttpUrl(value) {
   try {
     const u = new URL(value);

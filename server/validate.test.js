@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { validatePack, isHttpUrl } from './validate.js';
+import { validatePack, isHttpUrl, isValidOwnerToken } from './validate.js';
 
 describe('isHttpUrl', () => {
   test('accepts http/https, rejects other schemes', () => {
@@ -61,5 +61,19 @@ describe('validatePack', () => {
     });
     expect(errors.some((e) => /valid http/.test(e))).toBe(true);
     expect(errors.some((e) => /only URL items/.test(e))).toBe(true);
+  });
+});
+
+describe('isValidOwnerToken', () => {
+  test('accepts base64url tokens of a reasonable length', () => {
+    expect(isValidOwnerToken('AbCd12-_09AbCd12-_09AbCd')).toBe(true);
+  });
+
+  test('rejects missing, short, or malformed tokens', () => {
+    expect(isValidOwnerToken(undefined)).toBe(false);
+    expect(isValidOwnerToken('')).toBe(false);
+    expect(isValidOwnerToken('short')).toBe(false);
+    expect(isValidOwnerToken('has spaces in it 1234567890')).toBe(false);
+    expect(isValidOwnerToken('has/invalid+chars/1234567890')).toBe(false);
   });
 });
